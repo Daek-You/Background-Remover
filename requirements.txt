@@ -8,3 +8,5 @@ tqdm
 rembg
 onnxruntime-gpu
 flask-cors
+segment-anything
+tqdm>=4.64.0

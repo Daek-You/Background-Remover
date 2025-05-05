@@ -1,106 +1,74 @@
+import threading
 import cv2
 import numpy as np
-from rembg import remove
 from PIL import Image
+from segment_anything import SamPredictor, sam_model_registry
+from app.utils import download_sam_model
 
-def preprocess_image(image: Image.Image) -> np.ndarray:
-    """이미지를 전처리하여 numpy 배열로 변환합니다."""
-    img_np = np.array(image.convert("RGB"))
-    blurred = cv2.GaussianBlur(img_np, (5, 5), 0)
-    return img_np, blurred
+# 전역 변수
+predictor = None
+predictor_lock = threading.Lock()
 
-def create_flood_fill_mask(img: np.ndarray, x: int, y: int) -> np.ndarray:
-    """클릭한 지점을 기준으로 플러드필 마스크를 생성합니다."""
-    h, w = img.shape[:2]
-    flood_mask = np.zeros((h + 2, w + 2), np.uint8)
+def get_predictor():
+    """predictor 객체 반환 (필요시 초기화, 스레드 안전)"""
+    global predictor
     
-    # 플러드필 설정
-    flood_fill_flags = (
-        4 |                             # 4방향 연결성 사용
-        cv2.FLOODFILL_FIXED_RANGE |     # 고정 범위 사용
-        cv2.FLOODFILL_MASK_ONLY |       # 마스크만 채우기
-        (1 << 8)                        # 새로운 값
-    )
+    # 이미 초기화되었는지 빠르게 확인
+    if predictor is not None:
+        return predictor
     
-    # 클릭한 지점에서 플러드필 수행
-    loDiff = (20, 20, 20)  # 색상 차이 하한값
-    upDiff = (20, 20, 20)  # 색상 차이 상한값
-    cv2.floodFill(
-        img, flood_mask, (x, y), 255,
-        loDiff=loDiff, upDiff=upDiff,
-        flags=flood_fill_flags
-    )
+    # 잠금 획득 후 다시 확인
+    with predictor_lock:
+        if predictor is None:
+            # 모델 파일 확인 및 다운로드
+            model_path = download_sam_model(model_type="vit_h")
+            
+            # SAM 모델 로드
+            print(f"SAM 모델 로드 중...")
+            sam = sam_model_registry["vit_h"](checkpoint=model_path)
+            predictor = SamPredictor(sam)
+            print("SAM 모델 로드 완료!")
     
-    # 플러드필 마스크에서 패딩 제거
-    return flood_mask[1:-1, 1:-1]
-
-def apply_grabcut(img_np: np.ndarray, initial_mask: np.ndarray) -> np.ndarray:
-    """GrabCut 알고리즘을 사용하여 객체 분할을 수행합니다."""
-    # GrabCut 모델 초기화
-    bgdModel = np.zeros((1, 65), np.float64)
-    fgdModel = np.zeros((1, 65), np.float64)
-    
-    # 복사본 생성 (원본 데이터 보존)
-    mask = initial_mask.copy()
-    
-    # GrabCut 수행
-    cv2.grabCut(img_np, mask, None, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
-    
-    # 최종 마스크 생성 (0,2: 배경 / 1,3: 전경)
-    return np.where((mask == 1) | (mask == 3), 255, 0).astype('uint8')
-
-def filter_biggest_contour_at_point(mask: np.ndarray, x: int, y: int) -> np.ndarray:
-    """클릭한 지점이 포함된 가장 큰 컨투어만 유지합니다."""
-    # 컨투어 찾기
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # 클릭 지점을 포함하는 컨투어 찾기
-    containing_contours = []
-    for contour in contours:
-        if cv2.pointPolygonTest(contour, (x, y), False) >= 0:
-            containing_contours.append(contour)
-    
-    # 클릭 지점을 포함하는 컨투어 중 가장 큰 것 선택
-    if containing_contours:
-        max_contour = max(containing_contours, key=cv2.contourArea)
-        filtered_mask = np.zeros_like(mask)
-        cv2.drawContours(filtered_mask, [max_contour], 0, 255, -1)
-        return filtered_mask
-    
-    return mask
-
-def create_transparent_image(img_np: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    """마스크를 적용하여 투명 배경의 이미지를 생성합니다."""
-    # RGBA 이미지로 변환
-    result_img = cv2.cvtColor(img_np, cv2.COLOR_RGB2RGBA)
-    
-    # 알파 채널에 마스크 적용
-    result_img[:, :, 3] = mask
-    
-    return result_img
+    return predictor
 
 def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Image:
-    """클릭한 객체를 식별하여 배경을 제거합니다."""
-    # 1. 이미지 전처리
-    img_np, blurred = preprocess_image(image)
-    
-    # 2. 초기 마스크 생성
-    mask = np.zeros(img_np.shape[:2], dtype=np.uint8)
-    mask[:] = 2  # 처음에는 모든 픽셀을 '가능한 배경'으로 설정
-    
-    # 3. 플러드필 마스크 생성
-    flood_mask = create_flood_fill_mask(blurred, x, y)
-    
-    # 4. 플러드필로 찾은 영역을 전경으로 설정
-    mask[flood_mask == 1] = 1
-    
-    # 5. GrabCut으로 객체 분할
-    result_mask = apply_grabcut(img_np, mask)
-    
-    # 6. 클릭 지점 포함된 최대 컨투어 필터링
-    result_mask = filter_biggest_contour_at_point(result_mask, x, y)
-    
-    # 7. 투명 배경 적용
-    result_img = create_transparent_image(img_np, result_mask)
-    
-    return Image.fromarray(result_img)
+    """클릭한 위치의 객체 배경을 제거하는 함수"""
+    try:
+        # 이미지를 numpy 배열로 변환
+        img_np = np.array(image.convert("RGB"))
+        
+        # SAM 모델 작업은 스레드 안전하게 처리
+        with predictor_lock:
+            # SAM 모델 가져오기
+            predictor = get_predictor()
+            
+            # SAM 모델에 이미지 설정
+            predictor.set_image(img_np)
+            
+            # 클릭 위치 프롬프트 설정
+            input_point = np.array([[x, y]])
+            input_label = np.array([1])  # 1은 전경(객체), 0은 배경
+            
+            # 마스크 예측
+            masks, scores, _ = predictor.predict(
+                point_coords=input_point,
+                point_labels=input_label,
+                multimask_output=True
+            )
+        
+        # 가장 높은 점수의 마스크 선택
+        mask_idx = np.argmax(scores)
+        mask = masks[mask_idx]
+        
+        # 마스크를 PIL 이미지로 변환
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        
+        # 마스크를 원본 이미지에 적용
+        img_pil = Image.fromarray(img_np)
+        img_pil.putalpha(mask_img)
+        return img_pil
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        # 오류 시 원본 이미지 반환
+        return image.convert('RGBA') if image.mode != 'RGBA' else image

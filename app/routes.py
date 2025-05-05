@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from app.remover import remove_background_from_image
-from app.file_utils import save_image
+from app.utils import save_image
 import os
 from PIL import Image
 

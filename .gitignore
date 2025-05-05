@@ -173,5 +173,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# 정적 파일 무시
+# 정적 파일 및 모델 무시
 static/
+models/

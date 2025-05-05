@@ -17,6 +17,11 @@ def create_app():
     # 폴더가 없으면 생성
     os.makedirs(upload_folder, exist_ok=True)
     
+    # 모델 초기화 - 앱 생성 시 한 번만 실행
+    with app.app_context():
+        from app.remover import get_predictor
+        get_predictor()
+    
     # 라우트 등록을 위한 블루프린트 import 및 등록
     app.register_blueprint(api_bp, url_prefix='/bg-remover')
     return app
