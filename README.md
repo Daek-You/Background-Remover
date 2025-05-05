@@ -18,3 +18,8 @@ pip install -r requirements.txt
 python -m pip install --upgrade pip
 ```  
 
+3. `Flask` 서버 실행  
+
+```bash
+python main.py
+```
