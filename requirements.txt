@@ -6,3 +6,5 @@ Pillow
 flask
 tqdm
 rembg
+onnxruntime-gpu
+flask-cors
