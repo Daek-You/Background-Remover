@@ -6,20 +6,8 @@
 
 ### Usage
 
-1. [Python 3.11.9](https://www.python.org/downloads/release/python-3119/) 버전 설치 (주요 딥러닝 라이브러리들과의 호환성이 높으며, Windows와 Ubuntu 환경 모두에서 안정적으로 작동)
-2. [의존성 목록](/requirements.txt)에 있는 내용들을 설치  
-
-```bash
-pip install -r requirements.txt
-```  
-
-안정성을 위해, 최신 `pip` 버전으로 업데이트  
-```bash
-python -m pip install --upgrade pip
-```  
-
-3. `Flask` 서버 실행  
+[Python 3.11.9](https://www.python.org/downloads/release/python-3119/) 버전을 설치하고, IDE로 프로젝트를 열어 터미널에서 실행해주면 됩니다.  
 
 ```bash
 python main.py
-```
+```  
