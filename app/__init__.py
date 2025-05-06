@@ -3,7 +3,6 @@ from flask_cors import CORS
 from app.routes import api_bp
 import os
 
-
 def create_app():
     app = Flask(__name__, static_folder='../static')
     
