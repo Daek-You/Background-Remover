@@ -36,13 +36,24 @@ def get_predictor():
             # 모델 파일 확인 및 다운로드
             model_path = download_sam_model(model_type=MODEL['TYPE'])
             
-            # SAM 모델 로드
+            # 기기 정보 로깅
             logger.info(f"SAM 모델 로드 중... (장치: {MODEL['DEVICE']})")
+            if MODEL['DEVICE'] == 'cuda':
+                logger.info(f"GPU 모델: {torch.cuda.get_device_name(0)}")
+                logger.info(f"가용 메모리: {torch.cuda.get_device_properties(0).total_memory / 1024 / 1024 / 1024:.2f} GB")
+                logger.info(f"할당 메모리: {torch.cuda.memory_allocated(0) / 1024 / 1024 / 1024:.2f} GB")
+                logger.info(f"예약 메모리: {torch.cuda.memory_reserved(0) / 1024 / 1024 / 1024:.2f} GB")
+            
+            # SAM 모델 로드
             start_time = time.time()
             sam = sam_model_registry[MODEL['TYPE']](checkpoint=model_path)
             sam.to(device=MODEL['DEVICE'])  # GPU로 모델 이동
             predictor = SamPredictor(sam)
             logger.info(f"SAM 모델 로드 완료! (소요시간: {time.time() - start_time:.2f}초)")
+            
+            # 모델 로드 후 메모리 사용량
+            if MODEL['DEVICE'] == 'cuda':
+                logger.info(f"모델 로드 후 GPU 메모리 사용량: {torch.cuda.memory_allocated(0) / 1024 / 1024 / 1024:.2f} GB")
     
     return predictor
 

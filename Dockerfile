@@ -22,9 +22,4 @@ WORKDIR /app
 
 COPY . /app
 
-# 모델 파일 다운로드
-RUN if [ ! -f /app/models/vit_b_model.pth ]; then \
-      wget -O /app/models/vit_b_model.pth https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth; \
-    fi
-
 CMD ["python3", "main.py"]
