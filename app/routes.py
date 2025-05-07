@@ -1,7 +1,6 @@
-from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from flask import Blueprint, request, jsonify, send_file
 from app.remover import remove_background_from_image
-from utils.image_utils import save_image
-import os
+import io
 from PIL import Image
 
 # 블루프린트 생성
@@ -48,10 +47,15 @@ def remove_background():
     # 좌표 정보와 함께 배경 제거 함수 호출
     result_img = remove_background_from_image(img, x, y)
 
-    # 결과 이미지 저장 후, 경로 반환
-    result_path = save_image(result_img, current_app.config['UPLOAD_FOLDER'], filename='result.png')
+    # 이미지를 메모리 스트림에 저장
+    img_byte_arr = io.BytesIO()
+    result_img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)  # 스트림 포인터를 처음으로 이동
     
-    # 결과 이미지 파일을 응답으로 전송
-    directory = os.path.dirname(result_path)
-    filename = os.path.basename(result_path)
-    return send_from_directory(directory, filename, as_attachment=True)
+    # 메모리에서 직접 이미지 반환 (파일로 저장하지 않음)
+    return send_file(
+        img_byte_arr,
+        mimetype='image/png',
+        as_attachment=True,
+        download_name='result.png'
+    )

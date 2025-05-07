@@ -2,6 +2,7 @@
 import os
 import requests
 import tqdm
+import torch
 from pathlib import Path
 from config.settings import MODEL
 from utils.logger import setup_logger
@@ -58,4 +59,18 @@ def download_sam_model(model_type=MODEL['TYPE']):
                     pbar.update(len(chunk))
     
     logger.info(f"모델 다운로드 완료: {model_path}")
-    return str(model_path) 
+    return str(model_path)
+
+# PyTorch 보안 경고 해결을 위한 패치 함수
+def safe_load_model(model_path):
+    """보안 경고 없이 모델을 안전하게 로드하는 함수"""
+    try:
+        # weights_only=True 옵션을 사용하여 안전하게 모델 로드
+        return torch.load(model_path, weights_only=True)
+    except TypeError:
+        # 구버전 PyTorch에서는 weights_only 파라미터가 없을 수 있음
+        logger.warning("PyTorch 버전이 weights_only 파라미터를 지원하지 않습니다. 기존 방식으로 로드합니다.")
+        return torch.load(model_path)
+    except Exception as e:
+        logger.error(f"모델 로드 중 오류 발생: {str(e)}")
+        raise 

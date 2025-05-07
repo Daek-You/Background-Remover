@@ -4,8 +4,8 @@ services:
   app:
     image: background-remover
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: docker/local/Dockerfile-local
     ports:
       - "5000:5000"
     environment:
@@ -16,7 +16,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all     # 모든 GPU 사용
       - NVIDIA_DRIVER_CAPABILITIES=all # 모든 GPU 기능 사용
     volumes:
-      - ./models:/app/models
+      - ../../models:/app/models
     deploy:
       resources:
         reservations:
