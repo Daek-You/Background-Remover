@@ -1,13 +1,17 @@
 from flask import Flask
 from flask_cors import CORS
 from app.routes import api_bp
+from config.environments import current_env
 import os
 
 def create_app():
     app = Flask(__name__, static_folder='../static')
     
-    # CORS 설정
-    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+    # 환경 설정 적용
+    app.config.update(current_env)
+    
+    # CORS 설정 - 환경 설정에서 가져온 origins 사용
+    CORS(app, resources={r"/*": {"origins": current_env['CORS_ORIGINS']}})
     
     # 이미지 업로드/결과 저장 경로 설정
     upload_folder = os.path.join(app.root_path, '../static/images')
