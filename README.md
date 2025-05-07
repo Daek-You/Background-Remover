@@ -4,7 +4,7 @@
 아이폰에서 사진 속 대상을 손가락으로 클릭하여, 피사체만 배경과 분리한 경험이 있을 겁니다. [누끼](https://namu.wiki/w/%EB%88%84%EB%81%BC)를 딴다고도 하죠. 이와 비슷한 효과를 낼 수 있게 만들었습니다. 사진과 대상 위치 정보를 받아, 해당 대상을 누끼딸 수 있게 해줍니다.  
 
 ## ✏️기술 및 모델
-### 📌 Segment Anything Model (SAM)
+### 📌[Segment Anything Model (SAM)](https://segment-anything.com/)
 
 Meta AI에서 개발한 모델로, 이미지에서 객체를 분할(Segmentation)하기 위해 설계된 인공지능 모델입니다. 일반적인 세그멘테이션 모델과 다르게, SAM은 다음과 같은 특징이 있습니다.  
 - <b>프롬프트 기반 세그멘테이션</b>: 사용자가 클릭한 지점을 입력으로 받아 해당 객체를 식별합니다.
@@ -25,14 +25,23 @@ SAM에는 `ViT-B`, `ViT-L`, `ViT-H` 이렇게 3가지 버전이 있습니다.
 | **IoU 점수(성능 지표)** | 86.8 | 88.8 | 90.4 |
 | **추론 시간(상대적)** | 1x | 약 2.5x | 약 4x |  
 
+### 📌[CUDA(Compute Unified Device Architecture)](https://developer.nvidia.com/cuda-toolkit)
+
+NVIDIA에서 개발한 병렬 컴퓨팅 플랫폼이자 프로그래밍 모델로, GPU(Graphics Processing Unit)를 활용하여 복잡한 계산을 빠르게 수행할 수 있도록 설계되었습니다. CUDA는 GPU의 강력한 병렬 처리 능력을 활용하여 CPU보다 훨씬 빠르게 대량의 데이터를 처리할 수 있습니다. 사진의 배경 제거 성능을 대폭 향상시키고자 도입하였습니다.  
+
 <br>
 
 ## 📜의존성 관리
 
-- [<b>[DockerHub] nvidi/cuda:12.1.0-cudnn8-runtime-ubuntu20.04</b>](https://hub.docker.com/r/nvidia/cuda/tags?name=12.1)
+- [<b>[DockerHub] nvidi/cuda:12.1.0-cudnn8-runtime-ubuntu20.04</b>](https://hub.docker.com/r/nvidia/cuda/tags?name=12.1)  
+25년 5월을 기준으로, `PyTorch`가 CUDA 12.1까지 지원
 - [<b>Python 3.11.12</b>](https://www.python.org/downloads/release/python-31112/)
+- [<b>python3.11-venv</b>](https://docs.python.org/ko/3.11/tutorial/venv.html)  
+`externally-managed-environment` 오류 문제를 해결하고자 가상 환경을 사용
 - [<b>deadsnakes PPA</b>](https://github.com/deadsnakes)  
 Ubuntu에서 공식적으로 지원하지 않는 Python 버전을 설치할 수 있게 해주는 개인 패키지 아카이브
+- [<b>opencv-python-headless 4.11.0.86</b>](https://pypi.org/project/opencv-python-headless/)  
+GUI 기능이 없는 OpenCV 버전으로, 서버 환경에서 사용하기 적절 👉 서버 환경에서 불필요한 종속성을 제거  
 
 ```txt
 Package                  Version
