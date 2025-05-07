@@ -3,15 +3,13 @@
 
 아이폰에서 사진 속 대상을 손가락으로 클릭하여, 피사체만 배경과 분리한 경험이 있을 겁니다. [누끼](https://namu.wiki/w/%EB%88%84%EB%81%BC)를 딴다고도 하죠. 이와 비슷한 효과를 낼 수 있게 만들었습니다. 사진과 대상 위치 정보를 받아, 해당 대상을 누끼딸 수 있게 해줍니다.  
 
-## 기술 및 모델
-### Segment Anything Model (SAM)
+## ✏️기술 및 모델
+### 📌 Segment Anything Model (SAM)
 
 Meta AI에서 개발한 모델로, 이미지에서 객체를 분할(Segmentation)하기 위해 설계된 인공지능 모델입니다. 일반적인 세그멘테이션 모델과 다르게, SAM은 다음과 같은 특징이 있습니다.  
 - <b>프롬프트 기반 세그멘테이션</b>: 사용자가 클릭한 지점을 입력으로 받아 해당 객체를 식별합니다.
 - <b>범용성</b>: 다양한 종류의 객체를 인식할 수 있도록 대규모 데이터셋으로 학습되었습니다.
 - <b>Zero-shot 학습</b>: 새로운 객체 유형을 별도 학습 없이 인식할 수 있습니다.  
-
-<br>
 
 SAM에는 `ViT-B`, `ViT-L`, `ViT-H` 이렇게 3가지 버전이 있습니다.  
 
@@ -29,12 +27,12 @@ SAM에는 `ViT-B`, `ViT-L`, `ViT-H` 이렇게 3가지 버전이 있습니다.
 
 <br>
 
-### 버전
+## 📜의존성 관리
 
 - [<b>[DockerHub] nvidi/cuda:12.1.0-cudnn8-runtime-ubuntu20.04</b>](https://hub.docker.com/r/nvidia/cuda/tags?name=12.1)
 - [<b>Python 3.11.12</b>](https://www.python.org/downloads/release/python-31112/)
-- [<b>deadsnakes PPA</b>  
-Ubuntu에서 공식적으로 지원하지 않는 Python 버전을 설치할 수 있게 해주는 개인 패키지 아카이브(Personal Package Archive, PPA)](https://github.com/deadsnakes)
+- [<b>deadsnakes PPA</b>](https://github.com/deadsnakes)  
+Ubuntu에서 공식적으로 지원하지 않는 Python 버전을 설치할 수 있게 해주는 개인 패키지 아카이브
 
 ```txt
 Package                  Version
