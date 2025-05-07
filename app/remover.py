@@ -3,7 +3,12 @@ import cv2
 import numpy as np
 from PIL import Image
 from segment_anything import SamPredictor, sam_model_registry
-from app.utils import download_sam_model
+from utils.model_utils import download_sam_model
+from utils.logger import setup_logger
+from config.settings import IMAGE_ANALYSIS, MASK_SELECTION, MODEL
+
+# 로거 설정
+logger = setup_logger(__name__)
 
 # 전역 변수
 predictor = None
@@ -21,29 +26,18 @@ def get_predictor():
     with predictor_lock:
         if predictor is None:
             # 모델 파일 확인 및 다운로드
-            model_path = download_sam_model(model_type="vit_h")
+            model_path = download_sam_model(model_type=MODEL['TYPE'])
             
             # SAM 모델 로드
-            print(f"SAM 모델 로드 중...")
-            sam = sam_model_registry["vit_h"](checkpoint=model_path)
+            logger.info("SAM 모델 로드 중...")
+            sam = sam_model_registry[MODEL['TYPE']](checkpoint=model_path)
             predictor = SamPredictor(sam)
-            print("SAM 모델 로드 완료!")
+            logger.info("SAM 모델 로드 완료!")
     
     return predictor
 
-def analyze_image_for_object(img_np, x, y, radius=20):
-    """
-    클릭 위치 주변을 분석하여 객체 특성 파악
-    
-    Args:
-        img_np: 이미지 NumPy 배열
-        x, y: 클릭 좌표
-        radius: 분석할 영역의 반경 (픽셀)
-        
-    Returns:
-        is_near_edge: 클릭 위치가 에지(객체 경계)에 가까운지 여부
-        edge_strength: 에지의 강도 (0~1 사이 값)
-    """
+def analyze_image_for_object(img_np, x, y, radius=IMAGE_ANALYSIS['CLICK_RADIUS']):
+    """ 클릭 위치 주변을 분석하여 객체 특성 파악 """
     # 클릭 주변 영역 추출 (반경 내의 픽셀 분석)
     h, w = img_np.shape[:2]
     x_min = max(0, x - radius)
@@ -56,12 +50,15 @@ def analyze_image_for_object(img_np, x, y, radius=20):
     
     # 간단한 에지 검출로 객체 경계 강화
     gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(gray, 50, 150)
+    edges = cv2.Canny(gray, 
+                     IMAGE_ANALYSIS['CANNY_THRESHOLD_LOW'],
+                     IMAGE_ANALYSIS['CANNY_THRESHOLD_HIGH'])
     
-    # 클릭 위치 주변 에지 확인 (5픽셀 이내)
+    # 클릭 위치 주변 에지 확인
     center_y, center_x = radius, radius
-    nearby_region = edges[max(0, center_y-5):min(2*radius, center_y+5), 
-                          max(0, center_x-5):min(2*radius, center_x+5)]
+    edge_radius = IMAGE_ANALYSIS['EDGE_CHECK_RADIUS']
+    nearby_region = edges[max(0, center_y-edge_radius):min(2*radius, center_y+edge_radius), 
+                         max(0, center_x-edge_radius):min(2*radius, center_x+edge_radius)]
     
     # 에지 존재 여부 및 강도
     is_near_edge = np.any(nearby_region > 0)
@@ -80,36 +77,37 @@ def analyze_mask_edge_alignment(mask, img_np):
     Returns:
         edge_alignment_score: 마스크와 이미지 에지의 일치도 점수 (0~1)
     """
-    # 이미지 에지 검출
-    gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(gray, 50, 150)
-    
-    # 마스크 경계 추출
+    # 1. 전체 이미지가 아닌, 마스크 경계만 분석
     mask_uint8 = (mask * 255).astype(np.uint8)
     mask_contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    # 마스크 경계를 이미지에 그리기
-    mask_edge = np.zeros_like(gray)
+    # 2. 마스크 경계 주변만 에지 검출
+    mask_edge = np.zeros_like(img_np[:,:,0])
     cv2.drawContours(mask_edge, mask_contours, -1, 255, 1)
     
-    # 마스크 경계와 이미지 에지의 겹치는 부분 계산
-    overlap = np.logical_and(edges > 0, mask_edge > 0)
-    if np.sum(mask_edge) == 0:
+    # 3. 마스크 경계 주변 영역만 추출
+    kernel = np.ones((3,3), np.uint8)
+    mask_dilated = cv2.dilate(mask_uint8, kernel, iterations=2)
+    roi = np.where(mask_dilated > 0)
+    
+    if len(roi[0]) == 0:
         return 0.0
     
-    # 얼마나 많은 마스크 경계가 이미지 에지와 일치하는지 계산
-    edge_alignment_score = np.sum(overlap) / np.sum(mask_edge > 0)
+    # 4. 관심 영역만 에지 검출
+    gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(gray, 
+                     IMAGE_ANALYSIS['CANNY_THRESHOLD_LOW'],
+                     IMAGE_ANALYSIS['CANNY_THRESHOLD_HIGH'])
+    
+    # 5. 마스크 경계와 에지의 겹치는 정도를 관심 영역 부분만 계산
+    overlap = np.logical_and(edges[roi] > 0, mask_edge[roi] > 0)
+    edge_alignment_score = np.sum(overlap) / np.sum(mask_edge[roi] > 0)
+    
     return edge_alignment_score
 
 def select_best_mask(masks, scores, img_np, x, y, is_near_edge, edge_strength=0):
     """
     여러 마스크 중 가장 적합한 마스크를 선택하는 함수
-    
-    아이폰의 주체 분리 기능과 유사한 결과를 얻기 위해 다음 기준을 적용합니다:
-    1. 클릭한 좌표가 마스크에 포함되어야 함 (필수 조건)
-    2. 점수(신뢰도)가 높은 마스크 우선
-    3. 크기가 적절한 마스크 선호 (너무 크거나 작지 않은)
-    4. 객체 경계와 일치하는 마스크 선호
     
     Args:
         masks: SAM 모델이 생성한 마스크 후보들 (배열)
@@ -122,69 +120,57 @@ def select_best_mask(masks, scores, img_np, x, y, is_near_edge, edge_strength=0)
     Returns:
         best_mask_idx: 가장 적합한 마스크의 인덱스
     """
-    # 기본적으로 가장 높은 점수의 마스크 선택
-    best_mask_idx = np.argmax(scores)
-    highest_score = scores[best_mask_idx]
+    # 1. 빠른 필터링: 클릭 위치가 마스크에 포함되지 않는 것들은 즉시 제외
+    valid_masks = [(i, scores[i]) for i, mask in enumerate(masks) if mask[y, x]]
     
-    # 클릭 위치에서 마스크가 활성화된 것만 유효한 마스크로 간주
-    valid_masks = []
-    for i, mask in enumerate(masks):
-        if mask[y, x]:  # 클릭한 좌표에서 마스크가 True인지 확인
-            valid_masks.append((i, scores[i]))
+    if not valid_masks:
+        return np.argmax(scores)
     
-    # 유효한 마스크가 있으면, 그 중에서 가장 높은 점수의 마스크 선택
-    if valid_masks:
-        valid_masks.sort(key=lambda x: x[1], reverse=True)
-        best_mask_idx = valid_masks[0][0]
+    # 2. 점수 기반 초기 필터링 (상위 N개만 선택)
+    valid_masks.sort(key=lambda x: x[1], reverse=True)
+    top_masks = valid_masks[:MASK_SELECTION['TOP_MASKS_COUNT']]
     
-    # 마스크 크기 및 에지 일치도 분석
-    h, w = img_np.shape[:2]
-    total_pixels = h * w
-    
-    # 클릭이 객체 경계에 가까운 경우와 아닌 경우 다른 전략 적용
-    candidate_masks = []
-    
-    for i, mask in enumerate(masks):
-        # 마스크가 클릭 위치를 포함하는지 확인 (필수 조건)
-        if not mask[y, x]:
-            continue
+    # 3. 필요한 경우에만 상세 분석
+    if len(top_masks) > 1:
+        h, w = img_np.shape[:2]
+        total_pixels = h * w
+        
+        candidate_masks = []
+        for i, score in top_masks:
+            mask = masks[i]
+            mask_pixels = np.sum(mask)
+            mask_percentage = mask_pixels / total_pixels * 100
             
-        # 마스크의 픽셀 수 계산 및 이미지 대비 비율 계산
-        mask_pixels = np.sum(mask)
-        mask_percentage = mask_pixels / total_pixels * 100
-        
-        # 마스크와 이미지 에지의 일치도 계산
-        edge_alignment = analyze_mask_edge_alignment(mask, img_np)
-        
-        # 마스크 크기가 적절한지 확인 (5%~90%)
-        size_ok = 5 <= mask_percentage <= 90
-        # 점수가 충분히 높은지 확인 (최고 점수의 70% 이상)
-        score_ok = scores[i] > highest_score * 0.7
-        
-        if size_ok and score_ok:
-            # 경계에 가까운 클릭인 경우: 에지 일치도가 높은 마스크 선호
+            # 크기가 적절한지 빠르게 확인
+            if not (MASK_SELECTION['MIN_SIZE_PERCENTAGE'] <= mask_percentage <= MASK_SELECTION['MAX_SIZE_PERCENTAGE']):
+                continue
+                
+            # 점수가 충분히 높은지 확인
+            if score < scores[np.argmax(scores)] * MASK_SELECTION['SCORE_THRESHOLD']:
+                continue
+            
+            # 필요한 경우에만 에지 정렬 분석 수행
             if is_near_edge:
-                # (마스크 인덱스, 점수, 에지 일치도)
-                candidate_masks.append((i, scores[i], edge_alignment))
-            # 경계에서 먼 클릭인 경우: 크기가 적당하고 점수가 높은 마스크 선호
+                edge_alignment = analyze_mask_edge_alignment(mask, img_np)
+                candidate_masks.append((i, score, edge_alignment))
             else:
-                # 크기가 중간 정도인 마스크 선호 (너무 크거나 작지 않은)
-                size_score = 1.0 - abs(50 - mask_percentage) / 45  # 50%에 가까울수록 1에 가까움
-                # (마스크 인덱스, 점수, 크기 적절성)
-                candidate_masks.append((i, scores[i], size_score))
-    
-    # 후보 마스크가 있으면, 전략에 따라 최적의 마스크 선택
-    if candidate_masks:
-        if is_near_edge:
-            # 경계 근처 클릭: 에지 일치도와 점수를 모두 고려
-            candidate_masks.sort(key=lambda x: (x[2] * 0.7 + x[1] * 0.3), reverse=True)
-        else:
-            # 객체 내부 클릭: 크기 적절성과 점수를 모두 고려
-            candidate_masks.sort(key=lambda x: (x[2] * 0.5 + x[1] * 0.5), reverse=True)
+                size_score = 1.0 - abs(50 - mask_percentage) / 45
+                candidate_masks.append((i, score, size_score))
         
-        best_mask_idx = candidate_masks[0][0]
+        if candidate_masks:
+            if is_near_edge:
+                candidate_masks.sort(key=lambda x: (
+                    x[2] * MASK_SELECTION['EDGE_WEIGHT'] + 
+                    x[1] * MASK_SELECTION['SCORE_WEIGHT']
+                ), reverse=True)
+            else:
+                candidate_masks.sort(key=lambda x: (
+                    x[2] * MASK_SELECTION['SIZE_WEIGHT'] + 
+                    x[1] * MASK_SELECTION['SCORE_WEIGHT']
+                ), reverse=True)
+            return candidate_masks[0][0]
     
-    return best_mask_idx
+    return top_masks[0][0]
 
 def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Image:
     """
@@ -236,6 +222,6 @@ def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Im
         return img_pil
         
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"배경 제거 중 오류 발생: {str(e)}")
         # 오류 시 원본 이미지 반환 (RGBA 형식)
         return image.convert('RGBA') if image.mode != 'RGBA' else image
