@@ -23,7 +23,7 @@ MASK_SELECTION = {
 
 # 모델 관련 설정
 MODEL = {
-    'TYPE': 'vit_l',                                          # SAM 모델 타입
+    'TYPE': 'vit_h',                                          # SAM 모델 타입
     'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu'  # 현재 사용 중인 디바이스 설정
 }
 

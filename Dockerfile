@@ -14,12 +14,14 @@ RUN apt-get update && apt-get install -y \
 RUN python3.11 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 가상 환경에서 패키지 설치
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 가상 환경에서 필수 패키지 설치
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
 RUN pip install --no-cache-dir numpy opencv-python-headless Pillow flask flask-cors segment-anything tqdm requests
 
 WORKDIR /app
 
+# 앱 소스 코드 복사
 COPY . /app
 
+# 앱 실행
 CMD ["python3", "main.py"]

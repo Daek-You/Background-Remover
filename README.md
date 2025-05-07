@@ -27,7 +27,62 @@ SAM에는 `ViT-B`, `ViT-L`, `ViT-H` 이렇게 3가지 버전이 있습니다.
 
 ### 📌[CUDA(Compute Unified Device Architecture)](https://developer.nvidia.com/cuda-toolkit)
 
-NVIDIA에서 개발한 병렬 컴퓨팅 플랫폼이자 프로그래밍 모델로, GPU(Graphics Processing Unit)를 활용하여 복잡한 계산을 빠르게 수행할 수 있도록 설계되었습니다. CUDA는 GPU의 강력한 병렬 처리 능력을 활용하여 CPU보다 훨씬 빠르게 대량의 데이터를 처리할 수 있습니다. 사진의 배경 제거 성능을 대폭 향상시키고자 도입하였습니다.  
+NVIDIA에서 개발한 병렬 컴퓨팅 플랫폼이자 프로그래밍 모델로, GPU(Graphics Processing Unit)를 활용하여 복잡한 계산을 빠르게 수행할 수 있도록 설계되었습니다. CUDA는 GPU의 강력한 병렬 처리 능력을 활용하여 CPU보다 훨씬 빠르게 대량의 데이터를 처리할 수 있습니다. 사진의 배경 제거 성능을 대폭 향상시키고자 도입하였습니다. <b>(평균 작업 시간 22초에서 2초로 대폭 감소)</b>  
+
+> <b>Docker Desktop (Windows)에서 실행하는 경우</b>  
+- Docker Desktop for Windows가 최신 버전(특히 WSL2 기반)에서는 NVIDIA GPU 지원을 내장하고 있기에, 별도로 NVIDIA Container Toolkit 설치 불필요
+- Docker Desktop 설정 👉 `Docker Engine`에 다음 내용을 추가하고 재실행  
+
+```json
+   {
+     "experimental": true,
+     "features": {
+       "buildkit": true,
+       "nvidia-gpu": true
+     }
+   }
+```  
+
+> <b>AWS EC2 Ubuntu에서 실행하는 경우</b>  
+
+EC2 인스턴스가 GPU를 지원하는 타입이어야 한다.  
+
+1. 호스트에 NVIDIA 드라이버 설치  
+
+```bash
+sudo apt-get update
+sudo apt-get install -y nvidia-driver-535  # 최신 버전 번호로 변경 가능
+```  
+
+2. NVIDIA Container Toolkit 설치  
+
+```bash
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+```  
+
+3. `/etc/docker/daemon.json` 파일을 생성 또는 수정하여 다음 내용을 추가  
+
+```json
+{
+    "default-runtime": "nvidia",
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
+```  
+
+4. Docker 서비스 재시작  
+
+```bash
+sudo systemctl restart docker
+```  
 
 <br>
 
@@ -81,7 +136,6 @@ segment-anything         1.0
 setuptools               65.5.0
 sympy                    1.13.1
 torch                    2.5.1+cu121
-torchaudio               2.5.1+cu121
 torchvision              0.20.1+cu121
 tqdm                     4.67.1
 triton                   3.1.0

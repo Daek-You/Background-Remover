@@ -3,6 +3,11 @@ from flask_cors import CORS
 from app.routes import api_bp
 from config.environments import current_env
 import os
+from utils.image_utils import cleanup_old_files
+from utils.logger import setup_logger
+
+# 로거 설정
+logger = setup_logger(__name__)
 
 def create_app():
     app = Flask(__name__, static_folder='../static')
@@ -19,6 +24,11 @@ def create_app():
     
     # 폴더가 없으면 생성
     os.makedirs(upload_folder, exist_ok=True)
+    
+    # 오래된 임시 파일 정리
+    cleaned_files = cleanup_old_files(upload_folder)
+    if cleaned_files > 0:
+        logger.info(f"서버 시작 시 {cleaned_files}개의 오래된 임시 파일이 정리되었습니다.")
     
     # 모델 초기화 - 앱 생성 시 한 번만 실행
     with app.app_context():
