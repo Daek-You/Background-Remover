@@ -1,5 +1,7 @@
 """애플리케이션의 기본 설정값들을 관리하는 모듈"""
 
+import torch
+
 # 이미지 분석 관련 설정
 IMAGE_ANALYSIS = {
     'CLICK_RADIUS': 20,                 # 클릭 위치 주변 분석 반경
@@ -21,7 +23,8 @@ MASK_SELECTION = {
 
 # 모델 관련 설정
 MODEL = {
-    'TYPE': 'vit_h',                    # SAM 모델 타입
+    'TYPE': 'vit_b',                                          # SAM 모델 타입
+    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu'  # 현재 사용 중인 디바이스 설정
 }
 
 # 로깅 관련 설정
