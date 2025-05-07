@@ -11,9 +11,9 @@ ENVIRONMENTS = {
     'development': {
         'DEBUG': True,
         'TESTING': False,
-        'HOST': '127.0.0.1',
+        'HOST': '0.0.0.0',
         'PORT': 5000,
-        'CORS_ORIGINS': ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        'CORS_ORIGINS': ['http://localhost:*', 'http://127.0.0.1:*'],
         'LOGGING': {
             'LEVEL': 'DEBUG',
             'FORMAT': LOGGING['FORMAT'],

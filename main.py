@@ -1,4 +1,5 @@
 from utils.logger import setup_logger
+from config.environments import current_env, ENV
 
 # 로거 설정
 logger = setup_logger(__name__)
@@ -12,11 +13,12 @@ from app import create_app
 app = create_app()
 
 if __name__ == "__main__":
+    logger.info("서버를 시작합니다...")
+    logger.info(f"서버 주소: http://{current_env['HOST']}:{current_env['PORT']}")
+    logger.info(f"환경: {ENV}")
+
     app.run(
         host=current_env['HOST'],
         port=current_env['PORT'],
         debug=current_env['DEBUG']
     )
-    logger.info("서버가 시작되었습니다.")
-    logger.info(f"서버 주소: http://{current_env['HOST']}:{current_env['PORT']}")
-    logger.info(f"환경: {ENV}")

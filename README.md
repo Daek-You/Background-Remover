@@ -26,3 +26,59 @@ SAM에는 `ViT-B`, `ViT-L`, `ViT-H` 이렇게 3가지 버전이 있습니다.
 | **적합한 사용 환경** | 모바일 장치, 저사양 환경 | 일반 데스크톱, 중간 성능 요구 | 고성능 워크스테이션, 서버 |
 | **IoU 점수(성능 지표)** | 86.8 | 88.8 | 90.4 |
 | **추론 시간(상대적)** | 1x | 약 2.5x | 약 4x |  
+
+<br>
+
+### 버전
+
+- [<b>[DockerHub] nvidi/cuda:12.1.0-cudnn8-runtime-ubuntu20.04</b>](https://hub.docker.com/r/nvidia/cuda/tags?name=12.1)
+- [<b>Python 3.11.12</b>](https://www.python.org/downloads/release/python-31112/)
+- [<b>deadsnakes PPA</b>  
+Ubuntu에서 공식적으로 지원하지 않는 Python 버전을 설치할 수 있게 해주는 개인 패키지 아카이브(Personal Package Archive, PPA)](https://github.com/deadsnakes)
+
+```txt
+Package                  Version
+------------------------ ------------
+blinker                  1.9.0
+certifi                  2025.4.26
+charset-normalizer       3.4.2
+click                    8.1.8
+filelock                 3.13.1
+Flask                    3.1.0
+flask-cors               5.0.1
+fsspec                   2024.6.1
+idna                     3.10
+itsdangerous             2.2.0
+Jinja2                   3.1.4
+MarkupSafe               2.1.5
+mpmath                   1.3.0
+networkx                 3.3
+numpy                    2.1.2
+nvidia-cublas-cu12       12.1.3.1
+nvidia-cuda-cupti-cu12   12.1.105
+nvidia-cuda-nvrtc-cu12   12.1.105
+nvidia-cuda-runtime-cu12 12.1.105
+nvidia-cudnn-cu12        9.1.0.70
+nvidia-cufft-cu12        11.0.2.54
+nvidia-curand-cu12       10.3.2.106
+nvidia-cusolver-cu12     11.4.5.107
+nvidia-cusparse-cu12     12.1.0.106
+nvidia-nccl-cu12         2.21.5
+nvidia-nvjitlink-cu12    12.1.105
+nvidia-nvtx-cu12         12.1.105
+opencv-python-headless   4.11.0.86
+pillow                   11.0.0
+pip                      24.0
+requests                 2.32.3
+segment-anything         1.0
+setuptools               65.5.0
+sympy                    1.13.1
+torch                    2.5.1+cu121
+torchaudio               2.5.1+cu121
+torchvision              0.20.1+cu121
+tqdm                     4.67.1
+triton                   3.1.0
+typing_extensions        4.12.2
+urllib3                  2.4.0
+Werkzeug                 3.1.3
+```  
