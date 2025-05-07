@@ -8,18 +8,7 @@ from utils.logger import setup_logger
 # 로거 설정
 logger = setup_logger(__name__)
 
-# PyTorch 보안 경고 패치 적용
-def apply_patches():
-    from app.patch_sam import apply_torch_load_patch
-    if apply_torch_load_patch():
-        logger.info("SAM 모델 패치가 성공적으로 적용되었습니다.")
-    else:
-        logger.warning("SAM 모델 패치 적용에 실패했습니다. 경고 메시지가 표시될 수 있습니다.")
-
 def create_app():
-    # 패치 적용
-    apply_patches()
-    
     app = Flask(__name__, static_folder='../static')
     
     # 환경 설정 적용
