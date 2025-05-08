@@ -3,8 +3,13 @@
 양자화(FP16) 모드와 일반(FP32) 모드의 성능 및 결과 비교 테스트 스크립트
 """
 
-import time
+import sys
 import os
+
+# 모듈 경로 추가
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+import time
 import numpy as np
 import torch
 import argparse

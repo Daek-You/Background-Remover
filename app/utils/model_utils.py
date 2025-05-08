@@ -14,6 +14,7 @@ _cached_model_path = None
 
 def get_model_dir():
     """모델 디렉토리 경로를 결정하는 함수"""
+    
     # 환경 변수에서 경로 확인
     models_dir = os.getenv('MODELS_DIR')
     if models_dir:

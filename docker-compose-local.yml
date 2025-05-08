@@ -15,6 +15,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all     # 모든 GPU 사용
       - NVIDIA_DRIVER_CAPABILITIES=all # 모든 GPU 기능 사용
       - MODELS_DIR=/app/models         # 모델 디렉토리 경로
+      - PYTHONPATH=/app                # Python 모듈 경로
     volumes:
       - ./models:/app/models           # 모델 디렉토리만 볼륨으로 마운트
     deploy:
