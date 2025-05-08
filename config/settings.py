@@ -1,6 +1,11 @@
 """애플리케이션의 기본 설정값들을 관리하는 모듈"""
 
 import torch
+import os
+import multiprocessing
+
+# 이미지 크기 제한
+MAX_IMAGE_SIZE = 1024  # 최대 처리 이미지 크기
 
 # 이미지 분석 관련 설정
 IMAGE_ANALYSIS = {
@@ -24,7 +29,20 @@ MASK_SELECTION = {
 # 모델 관련 설정
 MODEL = {
     'TYPE': 'vit_h',                                          # SAM 모델 타입
-    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu'  # 현재 사용 중인 디바이스 설정
+    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu', # 현재 사용 중인 디바이스 설정
+    'USE_MIXED_PRECISION': True,                              # 양자화(FP16) 사용 여부
+    'QUANTIZATION_DTYPE': torch.float16,                      # 양자화 데이터 타입 (FP16)
+    'URLS': {                                                 # 모델 다운로드 URL
+        "vit_h": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth",
+        "vit_l": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth",
+        "vit_b": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
+    }
+}
+
+# 스레드 풀 관련 설정
+THREAD_POOL = {
+    'MAX_WORKERS': min(32, multiprocessing.cpu_count() + 4),  # 스레드 풀 최대 크기 (CPU 코어 + 4, 최대 32)
+    'USE_PROCESS_POOL': False,                                # 프로세스 풀 사용 여부 (True: 프로세스 풀, False: 스레드 풀)
 }
 
 # 로깅 관련 설정

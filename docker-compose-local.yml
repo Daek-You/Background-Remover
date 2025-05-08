@@ -12,19 +12,16 @@ services:
       - FLASK_ENV=development
       - HOST=0.0.0.0
       - PORT=5000
-      - DEBUG=True
       - NVIDIA_VISIBLE_DEVICES=all     # 모든 GPU 사용
       - NVIDIA_DRIVER_CAPABILITIES=all # 모든 GPU 기능 사용
+      - MODELS_DIR=/app/models         # 모델 디렉토리 경로
     volumes:
-      - ../../models:/app/models
+      - ./models:/app/models           # 모델 디렉토리만 볼륨으로 마운트
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia        # NDIVIA GPU 사용용
-              count: 1              # 최소 1개의 GPU를 예약
-              capabilities: [gpu]   # GPU 계산 기능 사용
-    runtime: nvidia                 # Docker 컨테이너가 NVIDIA 런타임을 사용하도록 지정합니다. 이는 컨테이너가 GPU를 액세스할 수 있게 해주는 기본 설정
-
-volumes:
-  models:
+            - driver: nvidia           # NVIDIA GPU 사용
+              count: 1                 # 최소 1개의 GPU를 예약
+              capabilities: [gpu]      # GPU 계산 기능 사용
+    runtime: nvidia                    # Docker 컨테이너가 NVIDIA 런타임을 사용하도록 지정

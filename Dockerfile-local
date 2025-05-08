@@ -23,5 +23,8 @@ WORKDIR /app
 # 앱 소스 코드 복사
 COPY . /app
 
+# 모델 저장을 위한 디렉토리 생성 (볼륨 마운트용)
+RUN mkdir -p /app/models
+
 # 앱 실행
 CMD ["python3", "main.py"]

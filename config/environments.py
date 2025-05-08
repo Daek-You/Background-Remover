@@ -1,6 +1,11 @@
 """환경별 설정을 관리하는 모듈"""
 import os
+import logging
 from config.settings import LOGGING
+
+# 기본 로거 설정
+logging.basicConfig(level=logging.INFO, format=LOGGING['FORMAT'], datefmt=LOGGING['DATE_FORMAT'])
+logger = logging.getLogger(__name__)
 
 # 환경 변수에서 현재 환경 가져오기 (기본값: development)
 ENV = os.getenv('FLASK_ENV', 'development')
@@ -9,7 +14,7 @@ ENV = os.getenv('FLASK_ENV', 'development')
 ENVIRONMENTS = {
     # 로컬 개발용
     'development': {
-        'DEBUG': True,
+        'DEBUG': False,
         'TESTING': False,
         'HOST': '0.0.0.0',
         'PORT': 5000,

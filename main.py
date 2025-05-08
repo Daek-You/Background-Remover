@@ -1,4 +1,4 @@
-from utils.logger import setup_logger
+from app.utils.logger import setup_logger
 from config.environments import current_env, ENV
 
 # 로거 설정

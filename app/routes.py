@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file
-from app.remover import remove_background_from_image
+from app.services.background_remover import BackgroundRemover
 import io
 from PIL import Image
 
@@ -47,8 +47,8 @@ def remove_background():
     # 이미지 로드
     img = Image.open(file.stream)
 
-    # 좌표 정보와 이미지 이름과 함께 배경 제거 함수 호출
-    result_img = remove_background_from_image(img, x, y, image_name)
+    # 서비스를 직접 호출하여 배경 제거
+    result_img = BackgroundRemover.remove_background(img, x, y, image_name)
 
     # 이미지를 메모리 스트림에 저장
     img_byte_arr = io.BytesIO()
