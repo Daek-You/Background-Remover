@@ -28,6 +28,9 @@ def remove_background():
     if not file:
         return jsonify({"error": "No image provided"}), 400
 
+    # 이미지 이름 받기
+    image_name = file.filename
+
     # 좌표 정보 받기
     x = request.form.get('x')
     y = request.form.get('y')
@@ -44,8 +47,8 @@ def remove_background():
     # 이미지 로드
     img = Image.open(file.stream)
 
-    # 좌표 정보와 함께 배경 제거 함수 호출
-    result_img = remove_background_from_image(img, x, y)
+    # 좌표 정보와 이미지 이름과 함께 배경 제거 함수 호출
+    result_img = remove_background_from_image(img, x, y, image_name)
 
     # 이미지를 메모리 스트림에 저장
     img_byte_arr = io.BytesIO()

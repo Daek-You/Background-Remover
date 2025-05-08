@@ -10,6 +10,7 @@ from utils.logger import setup_logger
 from config.settings import IMAGE_ANALYSIS, MASK_SELECTION, MODEL
 from concurrent.futures import ThreadPoolExecutor
 import gc
+import os
 
 # 로거 설정
 logger = setup_logger(__name__)
@@ -35,9 +36,9 @@ def get_predictor():
             try:
                 # GPU 메모리 확보를 위한 가비지 컬렉션 실행
                 if MODEL['DEVICE'] == 'cuda':
+                    logger.info("GPU 메모리 정리 완료")
                     gc.collect()
                     torch.cuda.empty_cache()
-                    logger.info("GPU 메모리 정리 완료")
                 
                 # 모델 파일 확인 및 다운로드
                 model_path = download_sam_model(model_type=MODEL['TYPE'])
@@ -192,25 +193,29 @@ def select_best_mask(masks, scores, img_np, x, y, is_near_edge, edge_strength=0)
     
     return top_masks[0][0]
 
-def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Image:
+def remove_background_from_image(image: Image.Image, x: int, y: int, image_path: str) -> Image.Image:
     """ 클릭한 위치의 객체 배경을 제거하는 함수 (아이폰 스타일) """
     global predictor
     
+    # Use the file name as the image_id
+    image_id = os.path.basename(image_path)
+    total_steps = 5  # Define the total number of steps in the process
+    
     try:
-        # 이미지 리사이징 (필요한 경우)
+        # Step 1: 이미지 리사이징 (필요한 경우)
         resized_image, scale = resize_image_if_needed(image)
         img_np = np.array(resized_image.convert("RGB"))
-        logger.info("이미지 리사이징 완료")
+        logger.info(f"[{image_id}] Step 1/{total_steps}: 이미지 리사이징 완료")
         
-        # 좌표 스케일 조정
+        # Step 2: 좌표 스케일 조정
         x = int(x * scale)
         y = int(y * scale)
         
-        # 에지 검출 및 객체 분석
+        # Step 3: 에지 검출 및 객체 분석
         is_near_edge, edge_strength = analyze_image_for_object(img_np, x, y)
-        logger.info("이미지 분석 완료")
+        logger.info(f"[{image_id}] Step 2/{total_steps}: 이미지 분석 완료")
         
-        # SAM 모델 작업은 스레드 안전하게 처리
+        # Step 4: SAM 모델 작업은 스레드 안전하게 처리
         with predictor_lock:
             try:
                 predictor = get_predictor()
@@ -228,7 +233,7 @@ def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Im
                     )
             except torch.cuda.OutOfMemoryError:
                 # GPU 메모리 부족 시 메모리 정리 후 재시도
-                logger.warning("GPU 메모리 부족. 메모리 정리 후 재시도합니다.")
+                logger.warning(f"[{image_id}] GPU 메모리 부족. 메모리 정리 후 재시도합니다.")
                 gc.collect()
                 torch.cuda.empty_cache()
                 
@@ -245,12 +250,12 @@ def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Im
                         multimask_output=True
                     )
         
-        logger.info("SAM 모델 예측 완료")
+        logger.info(f"[{image_id}] Step 3/{total_steps}: SAM 모델 예측 완료")
         
-        # 최적의 마스크 선택
+        # Step 5: 최적의 마스크 선택
         mask_idx = select_best_mask(masks, scores, img_np, x, y, is_near_edge, edge_strength)
         mask = masks[mask_idx]
-        logger.info("마스크 선택 완료")
+        logger.info(f"[{image_id}] Step 4/{total_steps}: 마스크 선택 완료")
         
         # 마스크를 PIL 이미지로 변환
         mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
@@ -263,7 +268,7 @@ def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Im
         result = image.convert('RGBA')
         result.putalpha(mask_img)
         
-        logger.info("배경 제거 완료")
+        logger.info(f"[{image_id}] Step 5/{total_steps}: 배경 제거 완료")
         
         # GPU 메모리 정리 (대용량 이미지 처리 후)
         if MODEL['DEVICE'] == 'cuda' and max(image.size) > 1000:
@@ -272,7 +277,7 @@ def remove_background_from_image(image: Image.Image, x: int, y: int) -> Image.Im
         return result
         
     except Exception as e:
-        logger.error(f"배경 제거 중 오류 발생: {str(e)}")
+        logger.error(f"[{image_id}] 배경 제거 중 오류 발생: {str(e)}")
         # 모든 오류 발생 시 메모리 정리
         if MODEL['DEVICE'] == 'cuda':
             torch.cuda.empty_cache()
