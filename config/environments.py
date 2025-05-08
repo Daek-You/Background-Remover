@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format=LOGGING['FORMAT'], datefmt=LOGGIN
 logger = logging.getLogger(__name__)
 
 # 환경 변수에서 현재 환경 가져오기 (기본값: development)
-ENV = os.getenv('FLASK_ENV', 'development')
+ENV = os.getenv('ENV', 'development')
 
 # 환경별 설정
 ENVIRONMENTS = {
@@ -18,7 +18,7 @@ ENVIRONMENTS = {
         'TESTING': False,
         'HOST': '0.0.0.0',
         'PORT': 5000,
-        'CORS_ORIGINS': ['http://localhost:*', 'http://127.0.0.1:*'],
+        'CORS_ORIGINS': ['http://localhost:3000', 'http://127.0.0.1:3000'],
         'LOGGING': {
             'LEVEL': 'DEBUG',
             'FORMAT': LOGGING['FORMAT'],

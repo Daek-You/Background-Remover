@@ -30,7 +30,7 @@ MASK_SELECTION = {
 MODEL = {
     'TYPE': 'vit_h',                                          # SAM 모델 타입
     'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu', # 현재 사용 중인 디바이스 설정
-    'USE_MIXED_PRECISION': True,                              # 양자화(FP16) 사용 여부
+    'USE_MIXED_PRECISION': False,                             # 양자화(FP16) 사용 여부
     'QUANTIZATION_DTYPE': torch.float16,                      # 양자화 데이터 타입 (FP16)
     'URLS': {                                                 # 모델 다운로드 URL
         "vit_h": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth",

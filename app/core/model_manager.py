@@ -4,6 +4,7 @@ SAM 모델 관리 및 예측 처리를 담당하는 모듈
 import threading
 import gc
 import torch
+import asyncio
 from contextlib import nullcontext
 from segment_anything import SamPredictor, sam_model_registry
 from app.utils.model_utils import download_sam_model
@@ -18,6 +19,7 @@ class ModelManager:
     
     _instance = None
     _lock = threading.Lock()
+    _asyncio_lock = None  # 비동기 컨텍스트에서 사용할 잠금
     
     def __new__(cls):
         """싱글톤 패턴 구현"""
@@ -36,6 +38,13 @@ class ModelManager:
         self.use_mixed_precision = MODEL['USE_MIXED_PRECISION'] and MODEL['DEVICE'] == 'cuda'
         self.amp_dtype = MODEL['QUANTIZATION_DTYPE']
         
+    @property
+    def asyncio_lock(self):
+        """비동기 잠금 객체 반환"""
+        if self._asyncio_lock is None:
+            self._asyncio_lock = asyncio.Lock()
+        return self._asyncio_lock
+    
     def get_predictor(self):
         """SAM 모델 predictor 객체 반환 (필요시 초기화, 스레드 안전)"""
         # 이미 초기화되었는지 빠르게 확인
@@ -86,6 +95,17 @@ class ModelManager:
         
         return self.predictor
     
+    async def get_predictor_async(self):
+        """비동기 환경에서 predictor 객체 반환"""
+        # 이미 초기화되었는지 빠르게 확인
+        if self.predictor is not None:
+            return self.predictor
+            
+        # 비동기 잠금 획득 (다른 스레드에서 이미 초기화 중인지 확인)
+        async with self.asyncio_lock:
+            # 동기 초기화 함수를 별도 스레드에서 실행
+            return await asyncio.to_thread(self.get_predictor)
+    
     def predict(self, image_np, point_coords, point_labels):
         """이미지에서 마스크 예측"""
         predictor = self.get_predictor()
@@ -124,11 +144,23 @@ class ModelManager:
         
         return masks, scores, logits
     
+    async def predict_async(self, image_np, point_coords, point_labels):
+        """비동기 방식으로 이미지 마스크 예측"""
+        # 예측 작업은 CPU/GPU 집약적이므로 별도 스레드에서 실행
+        return await asyncio.to_thread(
+            self.predict, 
+            image_np, point_coords, point_labels
+        )
+    
     def cleanup(self):
         """GPU 메모리 정리"""
         if MODEL['DEVICE'] == 'cuda':
             gc.collect()
             torch.cuda.empty_cache()
+    
+    async def cleanup_async(self):
+        """비동기 방식으로 GPU 메모리 정리"""
+        await asyncio.to_thread(self.cleanup)
 
 # 싱글톤 인스턴스 제공 함수
 def get_model_manager():
