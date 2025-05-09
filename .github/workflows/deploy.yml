@@ -36,6 +36,28 @@ jobs:
           # 모델 및 static 디렉토리 생성 (없는 경우)
           mkdir -p models static/images logs &&
           
+          # Docker Buildx 설치 (없는 경우)
+          echo "Docker Buildx 설치 확인 및 설치..."
+          if ! docker buildx version &> /dev/null; then
+            echo "Docker Buildx 설치 중..."
+            mkdir -p ~/.docker/cli-plugins
+            
+            # 최신 Docker Buildx 플러그인 다운로드
+            BUILDX_URL=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | grep "browser_download_url.*linux-amd64" | cut -d : -f 2,3 | tr -d \")
+            curl -L ${BUILDX_URL} -o ~/.docker/cli-plugins/docker-buildx
+            chmod +x ~/.docker/cli-plugins/docker-buildx
+            
+            # 설치 확인
+            docker buildx version
+            
+            # Buildx 빌더 생성 및 사용 설정
+            docker buildx create --name mybuilder --use
+            docker buildx inspect --bootstrap
+          else
+            echo "Docker Buildx가 이미 설치되어 있습니다."
+            docker buildx version
+          fi
+          
           # 환경 변수 설정 및 확인
           echo "EC2_HOST=${{ secrets.EC2_HOST }}" > .env
           echo "EC2_PORT=${{ secrets.EC2_PORT }}" >> .env
