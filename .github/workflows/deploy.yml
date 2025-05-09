@@ -46,14 +46,16 @@ jobs:
           # 모델 및 static 디렉토리 생성 (없는 경우)
           mkdir -p models static/images logs &&
           
-          # 환경 변수 설정
-          export EC2_HOST=${{ secrets.EC2_HOST }}
-          export EC2_PORT=${{ secrets.EC2_PORT }}
+          # 환경 변수 설정 및 확인
+          echo "EC2_HOST=${{ secrets.EC2_HOST }}" > .env
+          echo "EC2_PORT=${{ secrets.EC2_PORT }}" >> .env
+          echo "환경 변수 파일 확인:"
+          cat .env
           
           # Docker 이미지 빌드 및 실행
           docker-compose -f docker-compose-prod.yml down &&
-          EC2_HOST=${{ secrets.EC2_HOST }} EC2_PORT=${{ secrets.EC2_PORT }} docker-compose -f docker-compose-prod.yml build --no-cache &&
-          EC2_HOST=${{ secrets.EC2_HOST }} EC2_PORT=${{ secrets.EC2_PORT }} docker-compose -f docker-compose-prod.yml up -d &&
+          docker-compose -f docker-compose-prod.yml build --no-cache &&
+          docker-compose -f docker-compose-prod.yml up -d &&
           
           echo "배포가 완료되었습니다!"
         '
@@ -63,7 +65,7 @@ jobs:
         echo "애플리케이션 시작을 기다리는 중..."
         sleep 30  # 애플리케이션 시작 대기 시간
 
-        if curl -s http://${{ secrets.EC2_HOST }}:5000/bg-remover/health | grep -q "healthy"; then
+        if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/bg-remover/health | grep -q "healthy"; then
           echo "::set-output name=status::success"
           echo "✅ 배포 성공!"
         else
