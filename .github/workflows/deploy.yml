@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: EC2 서버 배포
 
 on:
   push:
@@ -10,18 +10,24 @@ jobs:
     runs-on: ubuntu-latest  # 워크플로우 실행 환경
     
     steps:
-    - name: Checkout code
+    - name: 1. 프로젝트 저장소 코드 가져오기 (checkout)
       uses: actions/checkout@v3  # 저장소 코드 체크아웃
     
-    - name: Set up SSH
+    - name: 2. SSH 설정
       run: |
+        echo "======= 환경 변수======"
+        echo "EC2_HOST: ${{ secrets.EC2_HOST }}"
+        echo "EC2_PORT: ${{ secrets.EC2_PORT }}"
+        echo "======================="
+        
+        # SSH 설정
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
         chmod 600 ~/.ssh/ec2_key
         # SSH 호스트 키 검증 스킵 (첫 접속 시 필요)
         echo -e "Host ${{ secrets.EC2_HOST }}\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     
-    - name: Deploy to EC2
+    - name: 3. AWS EC2 배포
       run: |
         # 애플리케이션 파일 복사
         rsync -avz --exclude='.git/' --exclude='.github/' --exclude='models/' --exclude='static/' -e "ssh -i ~/.ssh/ec2_key" ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/background-remover/
@@ -29,7 +35,14 @@ jobs:
         # SSH로 접속하여 배포 스크립트 실행
         ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
           cd ~/background-remover && 
-          echo "Deploying application..." &&
+          echo "배포 작업을 시작합니다..." &&
+          
+          # 서버 환경 정보 확인
+          echo "=== 서버 환경 정보 ==="
+          echo "호스트명: $(hostname)"
+          echo "IP 주소: $(hostname -I)"
+          echo "======================="
+          
           # 모델 및 static 디렉토리 생성 (없는 경우)
           mkdir -p models static/images logs &&
           
@@ -39,18 +52,37 @@ jobs:
           
           # Docker 이미지 빌드 및 실행
           docker-compose -f docker-compose-prod.yml down &&
-          docker-compose -f docker-compose-prod.yml build --no-cache &&
-          docker-compose -f docker-compose-prod.yml up -d &&
+          EC2_HOST=${{ secrets.EC2_HOST }} EC2_PORT=${{ secrets.EC2_PORT }} docker-compose -f docker-compose-prod.yml build --no-cache &&
+          EC2_HOST=${{ secrets.EC2_HOST }} EC2_PORT=${{ secrets.EC2_PORT }} docker-compose -f docker-compose-prod.yml up -d &&
           
-          echo "Deployment completed!"
+          echo "배포가 완료되었습니다!"
         '
     
-    - name: Verify deployment
+    - name: 4. 배포 확인
       run: |
-        echo "Waiting for application to start..."
+        echo "애플리케이션 시작을 기다리는 중..."
         sleep 30  # 애플리케이션 시작 대기 시간
-        
-        # 상태 확인 - 오류가 발생해도 워크플로우는 계속 진행
-        curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/bg-remover/health || echo "Health check failed but continuing..."
-        
-        echo "Deployment verification completed."
+
+        if curl -s http://${{ secrets.EC2_HOST }}:5000/bg-remover/health | grep -q "healthy"; then
+          echo "::set-output name=status::success"
+          echo "✅ 배포 성공!"
+        else
+          echo "::set-output name=status::failure"
+          echo "❌ 배포 실패!"
+        fi
+
+    # 배포 결과 Mattermost로 전송
+    - name: 5. 결과 알림 전송
+      if: always()
+      run: |
+        if [ "${{ steps.verify.outputs.status }}" = "success" ]; then
+          STATUS="✅ 성공"
+          EMOJI="🎉"
+        else
+          STATUS="❌ 실패"
+          EMOJI="⚠️"
+        fi
+      
+        curl -X POST -H 'Content-Type: application/json' --data '{
+          "text": "### 📢 배포 결과: '"$STATUS"'\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n**커밋:** ${{ github.sha }}\n**메시지:** ${{ github.event.head_commit.message }}\n**실행자:** ${{ github.actor }}\n**상태:** '"$STATUS $EMOJI"'\n**배포 링크:** [GitHub Actions 실행 결과](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+        }' ${{ secrets.MATTERMOST_WEBHOOK_URL }}
