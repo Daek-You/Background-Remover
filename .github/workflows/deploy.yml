@@ -75,16 +75,29 @@ jobs:
         '
     
     - name: 4. 배포 확인
+      id: verify
       run: |
-        echo "애플리케이션 시작을 기다리는 중..."
-        sleep 30  # 애플리케이션 시작 대기 시간
-
-        if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/bg-remover/health | grep -q "healthy"; then
+        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (1분 소요)"
+        sleep 60
+        
+        echo "서버 상태 확인 중..."
+        if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/health | grep -q "healthy"; then
           echo "::set-output name=status::success"
-          echo "✅ 배포 성공!"
+          echo "✅ 배포 성공! 서버가 응답합니다."
         else
+          echo "서버 응답이 없습니다. 컨테이너 상태 확인 중..."
+          
+          # 컨테이너 상태 확인
+          ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+            echo "컨테이너 상태:"
+            docker ps | grep bg-remover
+            
+            echo "컨테이너 로그 (마지막 20줄):"
+            docker logs --tail 20 bg-remover
+          '
+          
           echo "::set-output name=status::failure"
-          echo "❌ 배포 실패!"
+          echo "❌ 배포 실패! 서버가 응답하지 않습니다."
         fi
 
     # 배포 결과 Mattermost로 전송
