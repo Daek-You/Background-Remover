@@ -113,8 +113,8 @@ jobs:
     - name: 5. 배포 확인
       id: verify
       run: |
-        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (30초 예상)"
-        sleep 30
+        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (45초 예상)"
+        sleep 45
         
         echo "서버 상태 확인 중..."
         if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/health | grep -q "healthy"; then
