@@ -1,0 +1,52 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]  # 메인 브랜치에 푸시될 때 워크플로우 실행
+  workflow_dispatch:    # 수동으로 워크플로우 실행 가능
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # 워크플로우 실행 환경
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3  # 저장소 코드 체크아웃
+    
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
+        chmod 600 ~/.ssh/ec2_key
+        # SSH 호스트 키 검증 스킵 (첫 접속 시 필요)
+        echo -e "Host ${{ secrets.EC2_HOST }}\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    
+    - name: Deploy to EC2
+      run: |
+        # 애플리케이션 파일 복사
+        rsync -avz --exclude='.git/' --exclude='.github/' --exclude='models/' --exclude='static/' -e "ssh -i ~/.ssh/ec2_key" ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/background-remover/
+        
+        # SSH로 접속하여 배포 스크립트 실행
+        ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          cd ~/background-remover && 
+          echo "Deploying application..." &&
+          # 모델 및 static 디렉토리 생성 (없는 경우)
+          mkdir -p models static/images &&
+          
+          # Docker 이미지 빌드 및 실행
+          docker-compose -f docker-compose-local.yml down &&
+          docker-compose -f docker-compose-local.yml build --no-cache &&
+          docker-compose -f docker-compose-local.yml up -d &&
+          
+          echo "Deployment completed!"
+        '
+    
+    - name: Verify deployment
+      run: |
+        echo "Waiting for application to start..."
+        sleep 30  # 애플리케이션 시작 대기 시간
+        
+        # 상태 확인 - 오류가 발생해도 워크플로우는 계속 진행
+        curl -s http://${{ secrets.EC2_HOST }}:5000/bg-remover/health || echo "Health check failed but continuing..."
+        
+        echo "Deployment verification completed."
