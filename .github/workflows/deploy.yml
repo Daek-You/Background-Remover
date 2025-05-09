@@ -31,12 +31,16 @@ jobs:
           cd ~/background-remover && 
           echo "Deploying application..." &&
           # 모델 및 static 디렉토리 생성 (없는 경우)
-          mkdir -p models static/images &&
+          mkdir -p models static/images logs &&
+          
+          # 환경 변수 설정
+          export EC2_HOST=${{ secrets.EC2_HOST }}
+          export EC2_PORT=${{ secrets.EC2_PORT }}
           
           # Docker 이미지 빌드 및 실행
-          docker-compose -f docker-compose-local.yml down &&
-          docker-compose -f docker-compose-local.yml build --no-cache &&
-          docker-compose -f docker-compose-local.yml up -d &&
+          docker-compose -f docker-compose-prod.yml down &&
+          docker-compose -f docker-compose-prod.yml build --no-cache &&
+          docker-compose -f docker-compose-prod.yml up -d &&
           
           echo "Deployment completed!"
         '
@@ -47,6 +51,6 @@ jobs:
         sleep 30  # 애플리케이션 시작 대기 시간
         
         # 상태 확인 - 오류가 발생해도 워크플로우는 계속 진행
-        curl -s http://${{ secrets.EC2_HOST }}:5000/bg-remover/health || echo "Health check failed but continuing..."
+        curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/bg-remover/health || echo "Health check failed but continuing..."
         
         echo "Deployment verification completed."

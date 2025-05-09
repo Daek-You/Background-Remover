@@ -1,0 +1,39 @@
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
+
+# 시스템 패키지 설치 및 정리
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-venv \
+    wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 가상 환경 생성 및 활성화
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# 가상 환경에서 필수 패키지 설치
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
+RUN pip install --no-cache-dir numpy opencv-python-headless Pillow fastapi uvicorn[standard] python-multipart segment-anything tqdm requests
+
+WORKDIR /app
+
+# 앱 소스 코드 복사
+COPY . /app
+
+# 모델 저장을 위한 디렉토리 생성
+RUN mkdir -p /app/models
+
+# Python 모듈 경로 설정
+ENV PYTHONPATH=/app:$PYTHONPATH
+ENV ENV=production
+
+# 시작 스크립트에 실행 권한 부여
+RUN chmod +x /app/start.sh
+
+# 앱 실행
+CMD ["/app/start.sh"] 

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: bg-remover
+    image: background-remover:prod
+    build:
+      context: .
+      dockerfile: Dockerfile-prod
+    restart: always
+    ports:
+      - "${EC2_PORT}:${EC2_PORT}"
+    environment:
+      - ENV=production         # 환경 설정(프로덕션 환경)
+      - HOST=${EC2_HOST}        # 호스트 주소
+      - PORT=${EC2_PORT}        # 포트 번호
+      - NVIDIA_VISIBLE_DEVICES=all     # 모든 GPU 사용
+      - NVIDIA_DRIVER_CAPABILITIES=all # 모든 GPU 기능 사용
+      - MODELS_DIR=/app/models         # 모델 디렉토리 경로
+      - PYTHONPATH=/app                # Python 모듈 경로
+    volumes:
+      - ./models:/app/models           # 모델 디렉토리만 볼륨으로 마운트
+      - ./logs:/app/logs               # 로그 디렉토리 마운트
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia           # NVIDIA GPU 사용
+              count: 1                 # 최소 1개의 GPU를 예약
+              capabilities: [gpu]      # GPU 계산 기능 사용
+    runtime: nvidia                    # Docker 컨테이너가 NVIDIA 런타임을 사용하도록 지정 

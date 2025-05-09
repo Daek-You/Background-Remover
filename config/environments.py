@@ -31,9 +31,14 @@ ENVIRONMENTS = {
     'production': {
         'DEBUG': False,
         'TESTING': False,
-        'HOST': '0.0.0.0',   # TODO: 우리 도메인으로 변경
-        'PORT': 5000,        # TODO: 우리 포트로 변경
-        'CORS_ORIGINS': [],  # TODO: 우리 도메인으로 변경
+        'HOST': os.getenv('EC2_HOST'),
+        'PORT': int(os.getenv('EC2_PORT')),
+        'CORS_ORIGINS': [
+            "http://www.s12p31d202.com", 
+            "https://www.s12p31d202.com",
+            "http://www.0v0.co.kr",
+            "https://www.0v0.co.kr",
+        ],
         'LOGGING': {
             'LEVEL': 'INFO',
             'FORMAT': LOGGING['FORMAT'],
@@ -41,21 +46,6 @@ ENVIRONMENTS = {
             'COLORS': LOGGING['COLORS']
         }
     },
-
-    # 테스트 서버
-    'testing': {
-        'DEBUG': True,
-        'TESTING': True,
-        'HOST': '127.0.0.1',                        # TODO: 우리 도메인으로 변경
-        'PORT': 5000,                               # TODO: 우리 포트로 변경
-        'CORS_ORIGINS': ['http://localhost:3000'],  # TODO: 우리 도메인으로 변경
-        'LOGGING': {
-            'LEVEL': 'DEBUG',
-            'FORMAT': LOGGING['FORMAT'],
-            'DATE_FORMAT': LOGGING['DATE_FORMAT'],
-            'COLORS': LOGGING['COLORS']
-        }
-    }
 }
 
 def get_environment():
