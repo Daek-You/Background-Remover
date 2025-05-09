@@ -16,8 +16,11 @@ RUN apt-get update && apt-get install -y \
 RUN python3.11 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 가상 환경에서 필수 패키지 설치
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# pip 업그레이드
+RUN pip install --upgrade pip setuptools wheel
+
+# 가상 환경에서 필수 패키지 설치 (PyTorch CUDA 11.8 버전 사용)
+RUN pip install --no-cache-dir --timeout=300 torch torchvision --index-url https://download.pytorch.org/whl/cu118
 RUN pip install --no-cache-dir numpy opencv-python-headless Pillow fastapi uvicorn[standard] python-multipart segment-anything tqdm requests
 
 WORKDIR /app
