@@ -32,9 +32,25 @@ jobs:
           
           echo "===== 도커 리소스 정리 시작 ====="
           
-          # 모든 미사용 도커 리소스 정리 (중지된 컨테이너, 네트워크, 이미지, 빌드 캐시)
-          echo "도커 리소스 정리 중..."
-          docker system prune -a -f
+          # 중지된 컨테이너 정리
+          echo "중지된 컨테이너 정리 중..."
+          docker container prune -f
+          
+          # 현재 실행 중인 이미지와 관련 없는 댕글링(dangling) 이미지만 정리
+          echo "댕글링 이미지 정리 중..."
+          docker image prune -f
+          
+          # 30일 이상 사용하지 않은 볼륨 정리
+          echo "오래된 볼륨 정리 중..."
+          docker volume prune -f
+          
+          # 사용하지 않는 네트워크 정리
+          echo "사용하지 않는 네트워크 정리 중..."
+          docker network prune -f
+          
+          # bg-remover 관련 오래된 이미지 정리 (최신 3개 유지)
+          echo "이전 버전 이미지 정리 중..."
+          docker images | grep "bg-remover" | sort -k2 -r | tail -n +4 | awk '\''{print $3}'\'' | xargs -r docker rmi
           
           echo "===== 도커 리소스 정리 완료 ====="
           
