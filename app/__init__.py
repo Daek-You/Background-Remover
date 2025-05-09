@@ -58,8 +58,8 @@ def create_app():
         title="Background Remover API",
         description="SAM 모델을 사용한 이미지 배경 제거 API",
         version="1.0.0",
-        docs_url="/bg-remover/docs",
-        redoc_url="/bg-remover/redoc",
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
     
     # 로깅 설정
@@ -87,6 +87,6 @@ def create_app():
     
     # 라우트 등록
     from app.routes import router
-    app.include_router(router, prefix="/bg-remover")
+    app.include_router(router)
     
     return app
