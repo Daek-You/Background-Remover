@@ -23,7 +23,27 @@ jobs:
         # SSH 호스트 키 검증 스킵 (첫 접속 시 필요)
         echo -e "Host ${{ secrets.EC2_HOST }}\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     
-    - name: 3. AWS EC2 배포
+    - name: 3. EC2 서버 디스크 공간 확보
+      run: |
+        # SSH로 접속하여 디스크 공간 확인 및 정리
+        ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          echo "===== 디스크 공간 확인 (정리 전) ====="
+          df -h | grep -v tmpfs
+          
+          echo "===== 도커 리소스 정리 시작 ====="
+          
+          # 모든 미사용 도커 리소스 정리 (중지된 컨테이너, 네트워크, 이미지, 빌드 캐시)
+          echo "도커 리소스 정리 중..."
+          docker system prune -a -f
+          
+          echo "===== 도커 리소스 정리 완료 ====="
+          
+          # 정리 후 디스크 공간 확인
+          echo "===== 디스크 공간 확인 (정리 후) ====="
+          df -h | grep -v tmpfs
+        '
+    
+    - name: 4. AWS EC2 배포
       run: |
         # 애플리케이션 파일 복사
         rsync -avz --exclude='.git/' --exclude='.github/' --exclude='models/' --exclude='static/' -e "ssh -i ~/.ssh/ec2_key" ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/background-remover/
@@ -74,11 +94,11 @@ jobs:
           echo "배포가 완료되었습니다!"
         '
     
-    - name: 4. 배포 확인
+    - name: 5. 배포 확인
       id: verify
       run: |
-        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (1분 소요)"
-        sleep 60
+        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (30초 예상)"
+        sleep 30
         
         echo "서버 상태 확인 중..."
         if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/health | grep -q "healthy"; then
@@ -101,7 +121,7 @@ jobs:
         fi
 
     # 배포 결과 Mattermost로 전송
-    - name: 5. 결과 알림 전송
+    - name: 6. 결과 알림 전송
       if: always()
       run: |
         if [ "${{ steps.verify.outputs.status }}" = "success" ]; then
