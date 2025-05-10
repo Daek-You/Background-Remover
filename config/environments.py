@@ -32,7 +32,7 @@ ENVIRONMENTS = {
         'DEBUG': False,
         'TESTING': False,
         'HOST': '0.0.0.0',       # 0.0.0.0은 모든 네트워크 인터페이스에 바인딩한다는 의미로, FastAPI(Uvicorn)가 사용 가능한 모든 IP 주소를 통해 접근 가능
-        'PORT': int(os.getenv('EC2_PORT')),
+        'PORT': int(os.getenv('EC2_PORT', 5000)),
         'CORS_ORIGINS': [
             "http://www.s12p31d202.com", 
             "https://www.s12p31d202.com",
