@@ -33,3 +33,4 @@ services:
 networks:
   fastapi_net:
     name: fastapi_net
+    external: true
