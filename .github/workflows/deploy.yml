@@ -3,89 +3,89 @@ name: EC2 서버 배포
 on:
   push:
     branches: [ main ]  # 메인 브랜치에 푸시될 때 워크플로우 실행
-  workflow_dispatch:    # 수동으로 워크플로우 실행 가능
+  workflow_dispatch:     # 수동으로 워크플로우 실행 가능
 
 jobs:
   deploy:
     runs-on: ubuntu-latest  # 워크플로우 실행 환경
-    
+
     steps:
     - name: 1. 프로젝트 저장소 코드 가져오기 (checkout)
       uses: actions/checkout@v3  # 저장소 코드 체크아웃
-    
+
     - name: 2. SSH 설정
       run: |
         # SSH 설정
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
         chmod 600 ~/.ssh/ec2_key
-        
+
         # SSH 호스트 키 검증 스킵 (첫 접속 시 필요)
         echo -e "Host ${{ secrets.EC2_HOST }}\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    
+
     - name: 3. EC2 서버 디스크 공간 확보
       run: |
         # SSH로 접속하여 디스크 공간 확인 및 정리
-        ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+        ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
           echo "===== 디스크 공간 확인 (정리 전) ====="
           df -h | grep -v tmpfs
-          
+
           echo "===== 도커 리소스 정리 시작 ====="
-          
+
           # 중지된 컨테이너 정리
           echo "중지된 컨테이너 정리 중..."
           docker container prune -f
-          
+
           # 현재 실행 중인 이미지와 관련 없는 댕글링(dangling) 이미지만 정리
           echo "댕글링 이미지 정리 중..."
           docker image prune -f
-          
+
           # 30일 이상 사용하지 않은 볼륨 정리
           echo "오래된 볼륨 정리 중..."
           docker volume prune -f
-          
+
           # 사용하지 않는 네트워크 정리
           echo "사용하지 않는 네트워크 정리 중..."
           docker network prune -f
-          
+
           # bg-remover 관련 오래된 이미지 정리 (최신 3개 유지)
           echo "이전 버전 이미지 정리 중..."
           docker images | grep "bg-remover" | sort -k2 -r | tail -n +4 | awk '\''{print $3}'\'' | xargs -r docker rmi
-          
+
           echo "===== 도커 리소스 정리 완료 ====="
-          
+
           # 정리 후 디스크 공간 확인
           echo "===== 디스크 공간 확인 (정리 후) ====="
           df -h | grep -v tmpfs
         '
-    
+
     - name: 4. AWS EC2 배포
       run: |
         # 애플리케이션 파일 복사
-        rsync -avz --exclude='.git/' --exclude='.github/' --exclude='models/' --exclude='static/' -e "ssh -i ~/.ssh/ec2_key" ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/background-remover/
-        
+        rsync -avz --exclude='.git/' --exclude='.github/' --exclude='models/' --exclude='static/' -e "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key" ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:~/background-remover/
+
         # SSH로 접속하여 배포 스크립트 실행
-        ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
-          cd ~/background-remover && 
+        ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          cd ~/background-remover &&
           echo "배포 작업을 시작합니다..." &&
-          
+
           # 모델 및 static 디렉토리 생성 (없는 경우)
           mkdir -p models static/images logs &&
-          
+
           # Docker Buildx 설치 (없는 경우)
           echo "Docker Buildx 설치 확인 및 설치..."
           if ! docker buildx version &> /dev/null; then
             echo "Docker Buildx 설치 중..."
             mkdir -p ~/.docker/cli-plugins
-            
+
             # 최신 Docker Buildx 플러그인 다운로드
             BUILDX_URL=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | grep "browser_download_url.*linux-amd64" | cut -d : -f 2,3 | tr -d \")
-            curl -L ${BUILDX_URL} -o ~/.docker/cli-plugins/docker-buildx
+            curl -L "${BUILDX_URL}" -o ~/.docker/cli-plugins/docker-buildx
             chmod +x ~/.docker/cli-plugins/docker-buildx
-            
+
             # 설치 확인
             docker buildx version
-            
+
             # Buildx 빌더 생성 및 사용 설정
             docker buildx create --name mybuilder --use
             docker buildx inspect --bootstrap
@@ -93,45 +93,45 @@ jobs:
             echo "Docker Buildx가 이미 설치되어 있습니다."
             docker buildx version
           fi
-          
+
           # 환경 변수 설정 및 확인
           echo "EC2_HOST=${{ secrets.EC2_HOST }}" > .env
           echo "EC2_PORT=${{ secrets.EC2_PORT }}" >> .env
           echo "DOCKER_BUILDKIT=1" >> .env
           echo "환경 변수 파일 확인:"
           cat .env
-          
+
           # Docker 이미지 빌드 및 실행
           export DOCKER_BUILDKIT=1
           docker-compose -f docker-compose-prod.yml down &&
           docker-compose -f docker-compose-prod.yml build --no-cache &&
           docker-compose -f docker-compose-prod.yml up -d &&
-          
+
           echo "배포가 완료되었습니다!"
         '
-    
+
     - name: 5. 배포 확인
       id: verify
       run: |
         echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (45초 예상)"
         sleep 45
-        
+
         echo "서버 상태 확인 중..."
         if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/health | grep -q "healthy"; then
           echo "::set-output name=status::success"
           echo "✅ 배포 성공! 서버가 응답합니다."
         else
           echo "서버 응답이 없습니다. 컨테이너 상태 확인 중..."
-          
+
           # 컨테이너 상태 확인
-          ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
             echo "컨테이너 상태:"
             docker ps | grep bg-remover
-            
+
             echo "컨테이너 로그 (마지막 20줄):"
             docker logs --tail 20 bg-remover
           '
-          
+
           echo "::set-output name=status::failure"
           echo "❌ 배포 실패! 서버가 응답하지 않습니다."
         fi
@@ -147,7 +147,7 @@ jobs:
           STATUS="❌ 실패"
           EMOJI="⚠️"
         fi
-      
+
         curl -X POST -H 'Content-Type: application/json' --data '{
           "text": "### 📢 배포 결과: '"$STATUS"'\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n**커밋:** ${{ github.sha }}\n**메시지:** ${{ github.event.head_commit.message }}\n**실행자:** ${{ github.actor }}\n**상태:** '"$STATUS $EMOJI"'\n**배포 링크:** [GitHub Actions 실행 결과](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
         }' ${{ secrets.MATTERMOST_WEBHOOK_URL }}
