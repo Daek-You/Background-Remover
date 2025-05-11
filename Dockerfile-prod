@@ -20,8 +20,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip setuptools wheel
 
 # 가상 환경에서 필수 패키지 설치
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
-RUN pip install --no-cache-dir numpy opencv-python-headless Pillow fastapi uvicorn[standard] python-multipart segment-anything tqdm requests
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+RUN pip install numpy opencv-python-headless Pillow fastapi uvicorn[standard] python-multipart segment-anything tqdm requests
 
 WORKDIR /app
 

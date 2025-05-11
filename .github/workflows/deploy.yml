@@ -104,7 +104,7 @@ jobs:
           # Docker 이미지 빌드 및 실행
           export DOCKER_BUILDKIT=1
           docker-compose -f docker-compose-prod.yml down &&
-          docker-compose -f docker-compose-prod.yml build --no-cache &&
+          docker-compose -f docker-compose-prod.yml build &&
           docker-compose -f docker-compose-prod.yml up -d &&
 
           echo "배포가 완료되었습니다!"
