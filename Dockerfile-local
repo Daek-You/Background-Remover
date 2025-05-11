@@ -1,6 +1,12 @@
 FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
 
-RUN apt-get update && apt-get install -y \
+# apt 패키지 해시 불일치 문제 해결을 위한 설정
+RUN echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99compression-workaround
+
+# 미러 서버 변경
+RUN sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu\//http:\/\/mirrors.ustc.edu.cn\/ubuntu\//' /etc/apt/sources.list
+
+RUN apt-get clean && apt-get update && apt-get install -y \
     software-properties-common \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y \

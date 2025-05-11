@@ -28,4 +28,10 @@ services:
             - driver: nvidia           # NVIDIA GPU 사용
               count: 1                 # 최소 1개의 GPU를 예약
               capabilities: [gpu]      # GPU 계산 기능 사용
-    runtime: nvidia                    # Docker 컨테이너가 NVIDIA 런타임을 사용하도록 지정 
+    runtime: nvidia                    # Docker 컨테이너가 NVIDIA 런타임을 사용하도록 지정
+    networks:
+      - fastapi_net
+
+networks:
+  fastapi_net:
+    name: fastapi_net
