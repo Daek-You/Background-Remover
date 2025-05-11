@@ -113,41 +113,98 @@ jobs:
     - name: 5. 배포 확인
       id: verify
       run: |
-        echo "애플리케이션 시작을 기다리는 중... 모델 로딩에 시간이 걸릴 수 있습니다. (45초 예상)"
-        sleep 45
-
-        echo "서버 상태 확인 중..."
-        if curl -s http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}/health | grep -q "healthy"; then
-          echo "::set-output name=status::success"
-          echo "✅ 배포 성공! 서버가 응답합니다."
+        echo "도커 컨테이너 상태 확인 중..."
+        
+        # 컨테이너 상태 확인 및 결과 저장
+        CONTAINER_STATUS=$(ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+          if docker ps | grep -q bg-remover; then
+            echo "container_up"
+          else
+            echo "container_down"
+          fi
+        ')
+        
+        if [ "$CONTAINER_STATUS" = "container_up" ]; then
+          echo "도커 컨테이너가 실행 중입니다."
+          
+          # Mattermost에 컨테이너 실행 알림 전송
+          curl -X POST -H 'Content-Type: application/json' --data '{
+            "text": "### 📢 배포 상태 업데이트\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n✅ FastAPI 도커 컨테이너가 실행되었습니다. 서버를 초기화 중입니다..."
+          }' ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+          
+          # Uvicorn 실행 로그 확인
+          echo "서버 초기화 완료 여부 확인 중... (최대 2분 대기)"
+          SERVER_READY="false"
+          MAX_ATTEMPTS=12  # 10초 간격으로 12번 체크 (2분)
+          
+          for ((i=1; i<=MAX_ATTEMPTS; i++)); do
+            echo "확인 시도 $i/$MAX_ATTEMPTS..."
+            SERVER_LOG=$(ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+              docker logs bg-remover 2>&1 | grep -c "Uvicorn running on" || echo "0"
+            ')
+            
+            if [ "$SERVER_LOG" -gt "0" ]; then
+              SERVER_READY="true"
+              break
+            fi
+            
+            # 10초 대기 후 다시 확인
+            sleep 10
+          done
+          
+          if [ "$SERVER_READY" = "true" ]; then
+            echo "::set-output name=status::success"
+            echo "✅ 서버가 성공적으로 초기화되었습니다."
+            
+            # Mattermost에 서버 초기화 완료 알림 전송
+            curl -X POST -H 'Content-Type: application/json' --data '{
+              "text": "### 📢 배포 상태 업데이트\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n🎉 서버가 시작되었습니다. 배포가 완료되었습니다!\n**접속 URL:** http://${{ secrets.EC2_HOST }}:${{ secrets.EC2_PORT }}"
+            }' ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+          else
+            echo "::set-output name=status::pending"
+            echo "⚠️ 도커 컨테이너는 실행 중이나 서버 초기화가 감지되지 않았습니다."
+            
+            # 컨테이너 로그 확인
+            ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+              echo "컨테이너 로그 (마지막 30줄):"
+              docker logs --tail 30 bg-remover
+            '
+          fi
         else
-          echo "서버 응답이 없습니다. 컨테이너 상태 확인 중..."
-
-          # 컨테이너 상태 확인
-          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
-            echo "컨테이너 상태:"
-            docker ps | grep bg-remover
-
-            echo "컨테이너 로그 (마지막 20줄):"
-            docker logs --tail 20 bg-remover
-          '
-
           echo "::set-output name=status::failure"
-          echo "❌ 배포 실패! 서버가 응답하지 않습니다."
+          echo "❌ 도커 컨테이너가 실행되지 않았습니다."
+          
+          # 도커 컨테이너 문제 확인
+          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i ~/.ssh/ec2_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+            echo "도커 컨테이너 상태:"
+            docker ps -a | grep bg-remover
+            
+            echo "도커 컨테이너 로그 (마지막 30줄):"
+            docker logs --tail 30 bg-remover 2>&1 || echo "로그를 가져올 수 없습니다."
+            
+            echo "도커 컴포즈 로그:"
+            cd ~/background-remover && docker-compose -f docker-compose-prod.yml logs
+          '
         fi
 
-    # 배포 결과 Mattermost로 전송
+    # 배포 결과 Mattermost로 전송 (최종 요약)
     - name: 6. 결과 알림 전송
       if: always()
       run: |
         if [ "${{ steps.verify.outputs.status }}" = "success" ]; then
           STATUS="✅ 성공"
           EMOJI="🎉"
+          MESSAGE="배포가 성공적으로 완료되었습니다."
+        elif [ "${{ steps.verify.outputs.status }}" = "pending" ]; then
+          STATUS="⚠️ 진행 중"
+          EMOJI="⏳"
+          MESSAGE="도커 컨테이너가 실행 중이나, 서버 초기화가 아직 완료되지 않았습니다. 수동으로 확인해주세요."
         else
           STATUS="❌ 실패"
           EMOJI="⚠️"
+          MESSAGE="배포 중 문제가 발생했습니다. 로그를 확인해주세요."
         fi
 
         curl -X POST -H 'Content-Type: application/json' --data '{
-          "text": "### 📢 배포 결과: '"$STATUS"'\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n**커밋:** ${{ github.sha }}\n**메시지:** ${{ github.event.head_commit.message }}\n**실행자:** ${{ github.actor }}\n**상태:** '"$STATUS $EMOJI"'\n**배포 링크:** [GitHub Actions 실행 결과](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          "text": "### 📢 배포 최종 결과: '"$STATUS"'\n**저장소:** ${{ github.repository }}\n**브랜치:** ${{ github.ref_name }}\n**커밋:** ${{ github.sha }}\n**메시지:** ${{ github.event.head_commit.message }}\n**실행자:** ${{ github.actor }}\n**상태:** '"$STATUS $EMOJI"'\n**내용:** '"$MESSAGE"'\n**배포 링크:** [GitHub Actions 실행 결과](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
         }' ${{ secrets.MATTERMOST_WEBHOOK_URL }}
