@@ -101,6 +101,15 @@ jobs:
           echo "환경 변수 파일 확인:"
           cat .env
 
+          # fastapi_net 네트워크 존재 여부 확인 및 생성
+          echo "Docker 네트워크 확인 중..."
+          if ! docker network ls | grep -q fastapi_net; then
+            echo "fastapi_net 네트워크가 존재하지 않습니다. 생성합니다."
+            docker network create fastapi_net
+          else
+            echo "fastapi_net 네트워크가 이미 존재합니다. 재사용합니다."
+          fi
+
           # Docker 이미지 빌드 및 실행
           export DOCKER_BUILDKIT=1
           docker-compose -f docker-compose-prod.yml down &&
