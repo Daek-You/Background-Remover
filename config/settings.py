@@ -35,6 +35,9 @@ MODEL = {
     'USE_MIXED_PRECISION': True,            # SAM 2.1에서는 기본 활성화 권장
     'QUANTIZATION_DTYPE': torch.bfloat16,   # SAM 2.1은 bfloat16 최적화됨
     
+    # SAM 2.1 저장소 URL (설정 파일 다운로드용)
+    'REPO_URL': 'https://raw.githubusercontent.com/facebookresearch/segment-anything-2/main',
+    
     # SAM 2.1 체크포인트 다운로드 URL
     'URLS': {
         'hiera_t': 'https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt',
@@ -43,12 +46,15 @@ MODEL = {
         'hiera_l': 'https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt'
     },
     
-    # SAM 2.1 설정 파일 매핑 (build_sam2에서 사용)
-    'CONFIG_MAP': {
-        'hiera_t': 'configs/sam2.1/sam2_hiera_tiny.yaml',
-        'hiera_s': 'configs/sam2.1/sam2_hiera_small.yaml', 
-        'hiera_b': 'configs/sam2.1/sam2_hiera_base_plus.yaml',
-        'hiera_l': 'configs/sam2.1/sam2_hiera_large.yaml'
+    # SAM 2.1 설정 파일
+    'CONFIG': {
+        'LOCAL_DIR': 'config/sam2.1',  # 로컬 설정 파일 디렉토리
+        'MODEL_TYPE_MAP': {
+            'hiera_t': 'sam2.1_hiera_t.yaml',
+            'hiera_s': 'sam2.1_hiera_s.yaml',
+            'hiera_b': 'sam2.1_hiera_b+.yaml',
+            'hiera_l': 'sam2.1_hiera_l.yaml'
+        }
     },
     
     # 모델 파일 크기 검증용 최소 크기 (MB)
@@ -61,6 +67,21 @@ MODEL = {
     
     # 사용 가능한 모델 타입 목록
     'TYPES': ['hiera_t', 'hiera_s', 'hiera_b', 'hiera_l'],
+    
+    # 모델 디렉토리 설정
+    'DIRS': {
+        'ENV_VAR': 'MODELS_DIR',           # 환경 변수 이름
+        'DOCKER_VOLUME': '/app/models',    # Docker 볼륨 경로
+        'DEFAULT_SUBDIR': 'models'         # 기본 서브디렉토리
+    },
+    
+    # 다운로드 설정
+    'DOWNLOAD': {
+        'MAX_RETRIES': 3,              # 최대 재시도 횟수
+        'TIMEOUT': 30,                 # 타임아웃 (초)
+        'BLOCK_SIZE': 1024 * 1024,     # 다운로드 블록 크기 (1MB)
+        'RETRY_DELAY': 5               # 재시도 대기 시간 (초)
+    }
 }
 
 # SAM 2.1 특화 설정

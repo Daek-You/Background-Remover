@@ -9,7 +9,7 @@ from contextlib import nullcontext
 # 분리된 모듈들 import
 from app.core.model_management.gpu_memory_manager import GPUMemoryManager
 from app.core.point_processing.negative_point_generator import NegativePointGenerator
-from app.core.model_loading.sam2_model_loader import SAM2ModelLoader
+from app.core.model_util.sam2_model_initializer import SAM2ModelInitializer
 
 from app.utils.logger import setup_logger
 from config.settings import MODEL, SAM2_OPTIONS
@@ -36,6 +36,7 @@ class ModelManager:
         """초기화"""
         self.predictor = None
         self.predictor_lock = threading.Lock()
+        self.model_initializer = SAM2ModelInitializer()
         
         # 설정에서 정보 가져오기
         self.version_name = MODEL.get('VERSION_NAME', MODEL['VERSION'])
@@ -95,7 +96,7 @@ class ModelManager:
         self._log_quantization_mode()
         
         # 3. 모델 로드
-        self.predictor = SAM2ModelLoader.load_model(self.model_type)
+        self.predictor = self.model_initializer.initialize_model(self.model_type)
         
         # 4. 로드 후 메모리 상태 확인
         GPUMemoryManager.log_post_load_memory()

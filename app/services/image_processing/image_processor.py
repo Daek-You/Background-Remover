@@ -1,9 +1,9 @@
 """ 이미지 처리 서비스 클래스 (기존 코드 호환용) """
 from PIL import Image
 import numpy as np
-from app.services.image_resizer import ImageResizer
-from app.services.image_analyzer import ImageAnalyzer
-from app.services.mask_processor import MaskProcessor
+from app.services.image_processing.image_resizer import ImageResizer
+from app.services.image_processing.image_analyzer import ImageAnalyzer
+from app.services.image_processing.mask_processor import MaskProcessor
 
 class ImageProcessor:
     """이미지 처리 서비스 클래스 (기존 코드 호환용)"""
