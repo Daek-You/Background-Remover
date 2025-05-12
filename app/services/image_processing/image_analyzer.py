@@ -1,30 +1,32 @@
-"""
-이미지 처리 관련 기능을 제공하는 서비스 모듈
-"""
+""" 이미지 분석 전담 클래스 """
 import numpy as np
 import cv2
-from PIL import Image
 from app.utils.logger import setup_logger
-from config.settings import IMAGE_ANALYSIS, MAX_IMAGE_SIZE
+from config.settings import IMAGE_ANALYSIS
 
 # 로거 설정
 logger = setup_logger(__name__)
 
-class ImageProcessor:
-    """이미지 처리 서비스"""
+class ImageAnalyzer:
+    """이미지 분석 전담 클래스"""
     
     @staticmethod
-    def resize_image_if_needed(image: Image.Image) -> tuple[Image.Image, float]:
-        """이미지가 너무 큰 경우 리사이징하고 스케일 비율 반환"""
-        if max(image.size) > MAX_IMAGE_SIZE:
-            scale = MAX_IMAGE_SIZE / max(image.size)
-            new_size = tuple(int(dim * scale) for dim in image.size)
-            return image.resize(new_size, Image.Resampling.LANCZOS), scale
-        return image, 1.0
-    
-    @staticmethod
-    def analyze_image_for_object(img_np, x, y, radius=IMAGE_ANALYSIS['CLICK_RADIUS']):
-        """클릭 위치 주변을 분석하여 객체 특성 파악"""
+    def analyze_image_for_object(img_np, x, y, radius=None):
+        """
+        클릭 위치 주변을 분석하여 객체 특성 파악
+        
+        Args:
+            img_np: 이미지 numpy 배열
+            x: 클릭한 x 좌표
+            y: 클릭한 y 좌표
+            radius: 분석 반경 (기본값: IMAGE_ANALYSIS['CLICK_RADIUS'])
+            
+        Returns:
+            tuple: (에지_근접_여부, 에지_강도)
+        """
+        if radius is None:
+            radius = IMAGE_ANALYSIS['CLICK_RADIUS']
+        
         # 클릭 주변 영역 추출 (반경 내의 픽셀 분석)
         h, w = img_np.shape[:2]
         x_min = max(0, x - radius)
@@ -37,7 +39,9 @@ class ImageProcessor:
         
         # 간단한 에지 검출로 객체 경계 강화
         gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
-        edges = cv2.Canny(gray, IMAGE_ANALYSIS['CANNY_THRESHOLD_LOW'], IMAGE_ANALYSIS['CANNY_THRESHOLD_HIGH'])
+        edges = cv2.Canny(gray, 
+                         IMAGE_ANALYSIS['CANNY_THRESHOLD_LOW'], 
+                         IMAGE_ANALYSIS['CANNY_THRESHOLD_HIGH'])
         
         # 클릭 위치 주변 에지 확인
         center_y, center_x = radius, radius
@@ -49,11 +53,21 @@ class ImageProcessor:
         is_near_edge = np.any(nearby_region > 0)
         edge_strength = np.sum(nearby_region) / (nearby_region.size * 255) if nearby_region.size > 0 else 0
         
+        logger.debug(f"에지 분석 결과: 근접={is_near_edge}, 강도={edge_strength:.3f}")
         return is_near_edge, edge_strength
     
     @staticmethod
     def analyze_mask_edge_alignment(mask, img_np):
-        """마스크가 이미지의 에지와 얼마나 잘 일치하는지 분석"""
+        """
+        마스크가 이미지의 에지와 얼마나 잘 일치하는지 분석
+        
+        Args:
+            mask: 분석할 마스크
+            img_np: 이미지 numpy 배열
+            
+        Returns:
+            float: 에지 정렬 점수
+        """
         # 마스크 경계 추출
         mask_uint8 = (mask * 255).astype(np.uint8)
         mask_contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -80,20 +94,29 @@ class ImageProcessor:
         overlap = np.logical_and(edges[roi] > 0, mask_edge[roi] > 0)
         edge_alignment_score = np.sum(overlap) / np.sum(mask_edge[roi] > 0)
         
+        logger.debug(f"에지 정렬 점수: {edge_alignment_score:.3f}")
         return edge_alignment_score
     
     @staticmethod
-    def apply_mask_to_image(image: Image.Image, mask: np.ndarray, resize_scale: float = 1.0) -> Image.Image:
-        """마스크를 이미지에 적용하여 배경이 제거된 결과 반환"""
-        # 마스크를 PIL 이미지로 변환
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+    def detect_edges(image_np, low_threshold=None, high_threshold=None):
+        """
+        이미지에서 에지 검출
         
-        # 원본 크기로 복원 필요시
-        if resize_scale != 1.0:
-            mask_img = mask_img.resize(image.size, Image.Resampling.LANCZOS)
+        Args:
+            image_np: 이미지 numpy 배열
+            low_threshold: Canny 하한 임계값
+            high_threshold: Canny 상한 임계값
+            
+        Returns:
+            numpy.ndarray: 에지 이미지
+        """
+        if low_threshold is None:
+            low_threshold = IMAGE_ANALYSIS['CANNY_THRESHOLD_LOW']
+        if high_threshold is None:
+            high_threshold = IMAGE_ANALYSIS['CANNY_THRESHOLD_HIGH']
         
-        # 마스크를 원본 이미지에 적용
-        result = image.convert('RGBA')
-        result.putalpha(mask_img)
+        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(gray, low_threshold, high_threshold)
         
-        return result 
+        logger.debug(f"에지 검출 완료: {np.sum(edges > 0)}개 에지 픽셀")
+        return edges
