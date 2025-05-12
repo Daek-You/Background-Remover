@@ -16,14 +16,13 @@ class BackgroundRemover:
     """배경 제거 서비스 메인 클래스"""
     
     @staticmethod
-    def remove_background(image: Image.Image, x: int, y: int, image_name: str) -> Image.Image:
+    def remove_background(image: Image.Image, click_points: list, image_name: str) -> Image.Image:
         """
-        클릭한 위치의 객체 배경을 제거하는 함수
+        여러 클릭 위치의 객체 배경을 제거하는 함수
         
         Args:
             image: 원본 이미지
-            x: 클릭한 x 좌표
-            y: 클릭한 y 좌표
+            click_points: 클릭한 좌표 리스트 [(x1, y1), (x2, y2), ...]
             image_name: 이미지 이름
             
         Returns:
@@ -34,26 +33,28 @@ class BackgroundRemover:
         
         try:
             logger.info(f"[{image_id}] {version_name} 배경 제거 작업 시작")
-            logger.info(f"[{image_id}] 입력 매개변수: 이미지 크기={image.size}, 클릭 위치=({x}, {y})")
+            logger.info(f"[{image_id}] 입력 매개변수: 이미지 크기={image.size}, 클릭 위치들={click_points}")
             
             # 입력 검증
-            if x < 0 or x >= image.size[0] or y < 0 or y >= image.size[1]:
-                logger.error(f"[{image_id}] 잘못된 클릭 좌표: ({x}, {y}), 이미지 크기: {image.size}")
-                return image.convert('RGBA') if image.mode != 'RGBA' else image
+            for i, (x, y) in enumerate(click_points):
+                if x < 0 or x >= image.size[0] or y < 0 or y >= image.size[1]:
+                    logger.error(f"[{image_id}] 잘못된 클릭 좌표 #{i+1}: ({x}, {y}), 이미지 크기: {image.size}")
+                    return image.convert('RGBA') if image.mode != 'RGBA' else image
             
             # 1. 이미지 전처리
-            img_np, scaled_x, scaled_y, scale = BackgroundRemovalSteps.preprocess_image(
-                image, x, y, image_id
+            img_np, scaled_points, scale = BackgroundRemovalSteps.preprocess_image(
+                image, click_points, image_id
             )
             
-            # 2. 이미지 분석
+            # 2. 이미지 분석 (첫 번째 포인트 기준)
+            x0, y0 = scaled_points[0]
             is_near_edge, edge_strength, context_info = BackgroundRemovalSteps.analyze_image(
-                img_np, scaled_x, scaled_y, image_id
+                img_np, x0, y0, image_id
             )
             
-            # 3. 모델 예측
+            # 3. 모델 예측 (다중 포인트)
             masks, scores, logits = BackgroundRemovalSteps.predict_masks(
-                img_np, scaled_x, scaled_y, image_id
+                img_np, scaled_points, image_id
             )
             
             # 디버깅: 예측된 마스크 정보 상세 로깅
@@ -68,11 +69,11 @@ class BackgroundRemover:
             
             # 4. 마스크 선택
             selected_mask = BackgroundRemovalSteps.select_best_mask(
-                masks, scores, img_np, scaled_x, scaled_y, 
+                masks, scores, img_np, x0, y0, 
                 is_near_edge, edge_strength, context_info, image_id
             )
             
-            # 4.5. 마스크 정제 (새로 추가)
+            # 4.5. 마스크 정제
             refined_mask = BackgroundRemovalSteps.refine_selected_mask(selected_mask, image_id)
             
             # 5. 마스크 적용
@@ -83,11 +84,11 @@ class BackgroundRemover:
             # 디버깅: 결과 이미지 저장 (설정 기반)
             if LOGGING.get('LEVEL', 'INFO') == 'DEBUG':
                 logger.debug(f"[{image_id}] 디버그 모드 활성화됨")
-                # 간단한 디버그 정보 파일 저장 (이미지는 생략)
+                # 간단한 디버그 정보 파일 저장
                 debug_info = {
                     'image_size': image.size,
-                    'click_position': (x, y),
-                    'scaled_position': (scaled_x, scaled_y),
+                    'click_positions': click_points,
+                    'scaled_positions': scaled_points,
                     'scale': scale,
                     'masks_count': len(masks),
                     'selected_mask_stats': {

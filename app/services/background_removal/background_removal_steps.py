@@ -28,7 +28,7 @@ class BackgroundRemovalSteps:
         logger.info(f"[{image_id}] Step {current_step}/{total_steps}: {description}")
     
     @staticmethod
-    def preprocess_image(image, x, y, image_id):
+    def preprocess_image(image, click_points, image_id):
         """1단계: 이미지 전처리"""
         BackgroundRemovalSteps.log_step(image_id, 1, 5, "이미지 전처리 시작")
         
@@ -36,19 +36,24 @@ class BackgroundRemovalSteps:
         resized_image, scale = ImageProcessor.resize_image_if_needed(image)
         img_np = np.array(resized_image.convert("RGB"))
         
-        # 올바른 좌표 변환
-        scaled_x = int(x * scale)
-        scaled_y = int(y * scale)
-        
-        # 좌표 범위 검증
+        # 모든 좌표 변환
         h, w = img_np.shape[:2]
-        scaled_x = max(0, min(scaled_x, w - 1))
-        scaled_y = max(0, min(scaled_y, h - 1))
+        scaled_points = []
         
-        logger.debug(f"좌표 변환: ({x}, {y}) -> ({scaled_x}, {scaled_y}), scale={scale}")
+        for i, (x, y) in enumerate(click_points):
+            # 좌표 스케일 조정
+            scaled_x = int(x * scale)
+            scaled_y = int(y * scale)
+            
+            # 좌표 범위 검증
+            scaled_x = max(0, min(scaled_x, w - 1))
+            scaled_y = max(0, min(scaled_y, h - 1))
+            
+            scaled_points.append((scaled_x, scaled_y))
+            logger.debug(f"좌표 #{i+1} 변환: ({x}, {y}) -> ({scaled_x}, {scaled_y}), scale={scale}")
         
         BackgroundRemovalSteps.log_step(image_id, 1, 5, "이미지 전처리 완료")
-        return img_np, scaled_x, scaled_y, scale
+        return img_np, scaled_points, scale
     
     @staticmethod
     def analyze_image(img_np, x, y, image_id):
@@ -78,14 +83,13 @@ class BackgroundRemovalSteps:
         return is_near_edge, edge_strength, context_info
     
     @staticmethod
-    def predict_masks(img_np, x, y, image_id):
+    def predict_masks(img_np, points, image_id):
         """
         3단계: 모델 예측
         
         Args:
             img_np: 이미지 numpy 배열
-            x: 클릭한 x 좌표
-            y: 클릭한 y 좌표
+            points: 스케일 조정된 클릭 좌표 리스트 [(x1, y1), (x2, y2), ...]
             image_id: 이미지 식별자
             
         Returns:
@@ -96,12 +100,14 @@ class BackgroundRemovalSteps:
         # 모델 관리자 가져오기
         model_manager = get_model_manager()
         
-        # 입력 포인트 설정
-        input_point = np.array([[x, y]])
-        input_label = np.array([1])
+        # 입력 포인트 설정 (모든 포인트를 positive로 설정)
+        input_points = np.array(points)
+        input_labels = np.ones(len(points))
+        
+        logger.debug(f"예측에 사용되는 포인트 수: {len(points)}")
         
         # SAM 2.1의 negative points는 모델 관리자에서 자동 처리
-        masks, scores, logits = model_manager.predict(img_np, input_point, input_label)
+        masks, scores, logits = model_manager.predict(img_np, input_points, input_labels)
         
         BackgroundRemovalSteps.log_step(image_id, 3, 5, "모델 예측 완료")
         return masks, scores, logits
