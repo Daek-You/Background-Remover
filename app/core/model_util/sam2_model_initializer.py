@@ -1,14 +1,16 @@
 """ SAM 모델 초기화 모듈 """
-import os
+import os, yaml
 from pathlib import Path
 from config.settings import MODEL
 from app.utils.logger import setup_logger
 from app.core.model_util.sam2_model_downloader import SAM2ModelDownloader
+from hydra import initialize, compose
+from hydra.core.global_hydra import GlobalHydra
+from omegaconf import OmegaConf
 
 # 로거 설정
 logger = setup_logger(__name__)
 
-# SAM2 시리즈 import
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
@@ -22,21 +24,30 @@ class SAM2ModelInitializer:
     def _build_sam2_model(self, model_cfg_name: str, model_path: Path):
         device = MODEL['DEVICE']
         logger.debug(f"{self.version_name} 모델 빌드 중... (device: {device})")
-        try:
-            # 단순히 설정 파일 이름만 전달 (경로 없이)
-            config_name = model_cfg_name.replace('.yaml', '')
-            sam = build_sam2(config_name, str(model_path), device=device)
-            
-            logger.debug(f"{self.version_name} 모델 빌드 완료")
-            return sam
-        except Exception as e:
-            logger.error(f"{self.version_name} 모델 빌드 실패: {str(e)}")
-            raise RuntimeError(f"모델 빌드 실패: {str(e)}")
         
         try:
-            sam = build_sam2(config_file, str(model_path), device=device)
+            # 설정 파일 경로
+            config_file = f"/app/config/sam2.1/{model_cfg_name}"
+            
+            # 설정 파일 존재 여부 확인
+            if not os.path.exists(config_file):
+                raise RuntimeError(f"설정 파일을 찾을 수 없습니다: {config_file}")
+            
+            logger.debug(f"설정 파일 로드 중: {config_file}")
+            
+            # YAML 파일 직접 로드
+            with open(config_file, 'r') as f:
+                yaml_content = yaml.safe_load(f)
+            
+            # OmegaConf 객체로 변환
+            cfg = OmegaConf.create(yaml_content)
+            logger.info(f"설정 파일 로드 성공: {config_file}")
+            
+            # SAM 2.1 모델 빌드
+            sam = build_sam2(cfg, str(model_path), device=device)
             logger.debug(f"{self.version_name} 모델 빌드 완료")
             return sam
+            
         except Exception as e:
             logger.error(f"{self.version_name} 모델 빌드 실패: {str(e)}")
             raise RuntimeError(f"모델 빌드 실패: {str(e)}")
