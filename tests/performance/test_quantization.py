@@ -28,9 +28,9 @@ def load_app_with_setting(use_mixed_precision):
     settings.MODEL['USE_MIXED_PRECISION'] = use_mixed_precision
     
     # 모듈 리로드
-    import app.core.model_manager
+    import app.core.model_management.model_manager
     import app.services.background_remover
-    importlib.reload(app.core.model_manager)
+    importlib.reload(app.core.model_management.model_manager)
     importlib.reload(app.services.background_remover)
     
     # 리로드 후 서비스 가져오기

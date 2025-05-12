@@ -28,13 +28,13 @@ def init_models(app):
     os.environ['APP_INITIALIZED'] = '1'
     
     try:
-        # 모델 관리자 초기화
-        from app.core.model_manager import get_model_manager
+        # 모델 관리자 초기화 (새로운 경로)
+        from app.core.model_management.model_manager import get_model_manager
         model_manager = get_model_manager()
         predictor = model_manager.get_predictor()
         
-        # 병렬 처리 관리자 초기화
-        from app.core.parallel_executor import get_executor_manager
+        # 병렬 처리 관리자 초기화 (새로운 경로)
+        from app.core.processors.parallel_executor import get_executor_manager
         executor_manager = get_executor_manager()
         executor_manager.get_executor()
         

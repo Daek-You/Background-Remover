@@ -7,9 +7,9 @@ import asyncio
 from contextlib import nullcontext
 
 # 분리된 모듈들 import
-from app.core.gpu_memory_manager import GPUMemoryManager
-from app.core.negative_point_generator import NegativePointGenerator
-from app.core.sam2_model_loader import SAM2ModelLoader
+from app.core.model_management.gpu_memory_manager import GPUMemoryManager
+from app.core.point_processing.negative_point_generator import NegativePointGenerator
+from app.core.model_loading.sam2_model_loader import SAM2ModelLoader
 
 from app.utils.logger import setup_logger
 from config.settings import MODEL, SAM2_OPTIONS

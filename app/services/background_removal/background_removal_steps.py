@@ -3,9 +3,9 @@
 """
 import numpy as np
 from app.utils.logger import setup_logger
-from app.core.model_manager import get_model_manager
+from app.core.model_management.model_manager import get_model_manager
 from app.services.image_processor import ImageProcessor
-from app.services.mask_selector import MaskSelector
+from app.services.mask_selection.mask_selector import MaskSelector
 from config.settings import MODEL
 
 # 로거 설정

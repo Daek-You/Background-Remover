@@ -4,7 +4,7 @@
 import os
 from PIL import Image
 from app.utils.logger import setup_logger
-from app.core.model_manager import get_model_manager
+from app.core.model_management.model_manager import get_model_manager
 from app.services.background_removal_steps import BackgroundRemovalSteps
 from config.settings import MODEL
 
