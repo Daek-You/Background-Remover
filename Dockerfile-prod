@@ -34,9 +34,7 @@ COPY . /app
 # 모델 저장을 위한 디렉토리 생성
 RUN mkdir -p /app/models
 
-# sam2 패키지 내부 config 디렉토리 생성 및 yaml 복사
-RUN mkdir -p /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1/
-COPY config/sam2.1/*.yaml /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1/
+ENV SAM2_CONFIG_DIR=/app/config/sam2.1
 
 # Python 모듈 경로 설정
 ENV PYTHONPATH=/app:$PYTHONPATH

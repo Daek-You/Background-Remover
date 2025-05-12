@@ -20,14 +20,21 @@ class SAM2ModelInitializer:
         self.downloader = SAM2ModelDownloader()
 
     def _build_sam2_model(self, model_cfg_name: str, model_path: Path):
-        """모델 빌드"""
-        if not model_path.exists():
-            raise RuntimeError(f"모델 파일이 존재하지 않습니다: {model_path}")
         device = MODEL['DEVICE']
         logger.debug(f"{self.version_name} 모델 빌드 중... (device: {device})")
         try:
-            # 설정 파일 이름만 넘김 (예: 'sam2.1_hiera_l.yaml')
-            sam = build_sam2(model_cfg_name, str(model_path), device=device)
+            # 단순히 설정 파일 이름만 전달 (경로 없이)
+            config_name = model_cfg_name.replace('.yaml', '')
+            sam = build_sam2(config_name, str(model_path), device=device)
+            
+            logger.debug(f"{self.version_name} 모델 빌드 완료")
+            return sam
+        except Exception as e:
+            logger.error(f"{self.version_name} 모델 빌드 실패: {str(e)}")
+            raise RuntimeError(f"모델 빌드 실패: {str(e)}")
+        
+        try:
+            sam = build_sam2(config_file, str(model_path), device=device)
             logger.debug(f"{self.version_name} 모델 빌드 완료")
             return sam
         except Exception as e:

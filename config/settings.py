@@ -48,7 +48,6 @@ MODEL = {
     
     # SAM 2.1 설정 파일
     'CONFIG': {
-        'LOCAL_DIR': 'config/sam2.1',  # 로컬 설정 파일 디렉토리
         'MODEL_TYPE_MAP': {
             'hiera_t': 'sam2.1_hiera_t.yaml',
             'hiera_s': 'sam2.1_hiera_s.yaml',

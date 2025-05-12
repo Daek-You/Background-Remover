@@ -1,9 +1,58 @@
+# FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
+
+# # apt 패키지 해시 불일치 문제 해결을 위한 설정
+# RUN echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99compression-workaround
+
+# # 미러 서버 변경 (네트워크 속도 개선)
+# RUN sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu\//http:\/\/mirrors.ustc.edu.cn\/ubuntu\//' /etc/apt/sources.list
+
+# RUN apt-get clean && apt-get update && apt-get install -y \
+#     software-properties-common \
+#     && add-apt-repository ppa:deadsnakes/ppa \
+#     && apt-get update && apt-get install -y \
+#     python3.11 \
+#     python3.11-dev \
+#     python3.11-venv \
+#     wget \
+#     git \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # 가상 환경 생성 및 활성화
+# RUN python3.11 -m venv /opt/venv
+# ENV PATH="/opt/venv/bin:$PATH"
+
+# # pip 업그레이드
+# RUN pip install --upgrade pip setuptools wheel
+
+# WORKDIR /app
+
+# # requirements.txt 먼저 복사하여 캐시 활용
+# COPY requirements.txt .
+
+# # 의존성 설치
+# RUN pip install -r requirements.txt
+
+# # 앱 소스 코드 복사
+# COPY . /app
+
+# # 모델 저장을 위한 디렉토리 생성 (볼륨 마운트용)
+# RUN mkdir -p /app/models
+
+# ENV SAM2_CONFIG_DIR=/app/config/sam2.1
+
+# # Python 모듈 경로 설정
+# ENV PYTHONPATH=/app:$PYTHONPATH
+
+# # 시작 스크립트에 실행 권한 부여
+# RUN chmod +x /app/start.sh
+
+# # 앱 실행 - 시작 스크립트로 환경 변수 활용
+# CMD ["/app/start.sh"]
+
 FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
 
-# apt 패키지 해시 불일치 문제 해결을 위한 설정
+# 1단계: 시스템 패키지 설치 (잘 안 변함 - 캐시 유지)
 RUN echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99compression-workaround
-
-# 미러 서버 변경 (네트워크 속도 개선)
 RUN sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu\//http:\/\/mirrors.ustc.edu.cn\/ubuntu\//' /etc/apt/sources.list
 
 RUN apt-get clean && apt-get update && apt-get install -y \
@@ -17,36 +66,34 @@ RUN apt-get clean && apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 가상 환경 생성 및 활성화
+# 2단계: 가상 환경 생성 (잘 안 변함 - 캐시 유지)
 RUN python3.11 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-
-# pip 업그레이드
 RUN pip install --upgrade pip setuptools wheel
 
 WORKDIR /app
 
-# requirements.txt 먼저 복사하여 캐시 활용
+# 3단계: Python 패키지 설치 (requirements.txt 변경 시에만 재실행)
 COPY requirements.txt .
-
-# 의존성 설치
 RUN pip install -r requirements.txt
 
-# 앱 소스 코드 복사
+# 4단계: SAM2 설정 파일 복사 (잘 안 변함 - 캐시 유지)
+RUN mkdir -p /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1
+
+# 5단계: 소스 코드 전체 복사 (자주 변함 - 마지막)
 COPY . /app
 
-# 모델 저장을 위한 디렉토리 생성 (볼륨 마운트용)
-RUN mkdir -p /app/models
+# 6단계: SAM2 설정 파일을 패키지 내부에 복사
+RUN cp /app/config/sam2.1/*.yaml /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1/
 
-# sam2 패키지 내부 config 디렉토리 생성 및 yaml 복사
-RUN mkdir -p /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1/
-COPY config/sam2.1/*.yaml /opt/venv/lib/python3.11/site-packages/sam2/configs/sam2.1/
+# 필요한 디렉토리 생성
+RUN mkdir -p /app/models /app/static /app/logs
 
-# Python 모듈 경로 설정
+# 환경 변수 설정
+ENV SAM2_CONFIG_DIR=/app/config/sam2.1
 ENV PYTHONPATH=/app:$PYTHONPATH
 
 # 시작 스크립트에 실행 권한 부여
 RUN chmod +x /app/start.sh
 
-# 앱 실행 - 시작 스크립트로 환경 변수 활용
 CMD ["/app/start.sh"]
