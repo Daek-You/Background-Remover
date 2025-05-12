@@ -15,9 +15,9 @@ IMAGE_ANALYSIS = {
 # 마스크 선택 관련 설정 (SAM 2.1 최적화)
 MASK_SELECTION = {
     'MIN_SIZE_PERCENTAGE': 3,           # 최소 마스크 크기 (%) - SAM 2.1은 더 작은 객체도 정확히 감지
-    'MAX_SIZE_PERCENTAGE': 92,          # 최대 마스크 크기 (%) - 여유 공간 확대
-    'SCORE_THRESHOLD': 0.6,             # 최고 점수 대비 최소 점수 비율 - SAM 2.1은 더 안정적
-    'TOP_MASKS_COUNT': 3,               # 상위 마스크 선택 개수
+    'MAX_SIZE_PERCENTAGE': 95,          # 최대 마스크 크기 (%) - 여유 공간 확대
+    'SCORE_THRESHOLD': 0.5,             # 최고 점수 대비 최소 점수 비율 - SAM 2.1은 더 안정적
+    'TOP_MASKS_COUNT': 5,               # 상위 마스크 선택 개수
     'EDGE_WEIGHT': 0.8,                 # 에지 정렬 가중치 - 강아지 털 등 복잡한 경계 처리 강화
     'SCORE_WEIGHT': 0.2,                # 점수 가중치
     'SIZE_WEIGHT': 0.6,                 # 크기 가중치
@@ -27,7 +27,7 @@ MASK_SELECTION = {
 MODEL = {
     'VERSION': 'SAM2',                  # SAM 버전 (SAM2 = SAM 2.1)
     'VERSION_NAME': 'SAM 2.1',          # 사람이 읽기 쉬운 버전 이름
-    'TYPE': 'hiera_l',                  # SAM 2.1 모델 타입 (hiera_large 추천)
+    'TYPE': 'hiera_b',                  # SAM 2.1 모델 타입
     'SUB_DIRECTORY_NAME': 'sam2',       # 모델 파일 저장 서브디렉토리
     'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
     
@@ -86,7 +86,7 @@ MODEL = {
 # SAM 2.1 특화 설정
 SAM2_OPTIONS = {
     # 이미지 모서리에 자동으로 추가할 negative point 설정
-    'AUTO_NEGATIVE_POINTS': True,       # 배경 제거 정확도 향상을 위해 활성화
+    'AUTO_NEGATIVE_POINTS': False,       # 배경 제거 정확도 향상
     'NEGATIVE_POINT_MARGIN': 10,        # 이미지 가장자리로부터 떨어뜨릴 픽셀
     
     # SAM 2.1의 메모리 관련 설정 (현재는 이미지만 처리하므로 기본값)
