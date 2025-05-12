@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     python3.11-dev \
     python3.11-venv \
     wget \
+    git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,9 +20,15 @@ ENV PATH="/opt/venv/bin:$PATH"
 # pip 업그레이드
 RUN pip install --upgrade pip setuptools wheel
 
-# 가상 환경에서 필수 패키지 설치
+# 가상 환경에서 기본 패키지 설치
 RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-RUN pip install numpy opencv-python-headless Pillow fastapi uvicorn[standard] python-multipart segment-anything tqdm requests
+
+# Python 패키지들을 한 번에 설치
+RUN pip install numpy opencv-python-headless Pillow fastapi uvicorn[standard] \
+               python-multipart tqdm requests
+
+# SAM 2.1 설치
+RUN pip install git+https://github.com/facebookresearch/segment-anything-2.git
 
 WORKDIR /app
 
@@ -33,10 +40,12 @@ RUN mkdir -p /app/models
 
 # Python 모듈 경로 설정
 ENV PYTHONPATH=/app:$PYTHONPATH
+
+# 환경 설정
 ENV ENV=production
 
 # 시작 스크립트에 실행 권한 부여
 RUN chmod +x /app/start.sh
 
 # 앱 실행
-CMD ["/app/start.sh"] 
+CMD ["/app/start.sh"]

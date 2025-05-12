@@ -45,10 +45,10 @@ MODEL = {
     
     # SAM 2.1 설정 파일 매핑 (build_sam2에서 사용)
     'CONFIG_MAP': {
-        'hiera_t': 'sam2_hiera_tiny.yaml',
-        'hiera_s': 'sam2_hiera_small.yaml', 
-        'hiera_b': 'sam2_hiera_base_plus.yaml',
-        'hiera_l': 'sam2_hiera_large.yaml'
+        'hiera_t': 'configs/sam2.1/sam2_hiera_tiny.yaml',
+        'hiera_s': 'configs/sam2.1/sam2_hiera_small.yaml', 
+        'hiera_b': 'configs/sam2.1/sam2_hiera_base_plus.yaml',
+        'hiera_l': 'configs/sam2.1/sam2_hiera_large.yaml'
     },
     
     # 모델 파일 크기 검증용 최소 크기 (MB)
