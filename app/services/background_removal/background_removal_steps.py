@@ -29,26 +29,23 @@ class BackgroundRemovalSteps:
     
     @staticmethod
     def preprocess_image(image, x, y, image_id):
-        """
-        1단계: 이미지 전처리
-        
-        Args:
-            image: 원본 이미지
-            x: 클릭한 x 좌표
-            y: 클릭한 y 좌표
-            image_id: 이미지 식별자
-            
-        Returns:
-            tuple: (전처리된_이미지_배열, 조정된_x, 조정된_y, 스케일)
-        """
+        """1단계: 이미지 전처리"""
         BackgroundRemovalSteps.log_step(image_id, 1, 5, "이미지 전처리 시작")
         
         # 크기 조정 및 좌표 스케일 조정
         resized_image, scale = ImageProcessor.resize_image_if_needed(image)
         img_np = np.array(resized_image.convert("RGB"))
         
+        # 올바른 좌표 변환
         scaled_x = int(x * scale)
         scaled_y = int(y * scale)
+        
+        # 좌표 범위 검증
+        h, w = img_np.shape[:2]
+        scaled_x = max(0, min(scaled_x, w - 1))
+        scaled_y = max(0, min(scaled_y, h - 1))
+        
+        logger.debug(f"좌표 변환: ({x}, {y}) -> ({scaled_x}, {scaled_y}), scale={scale}")
         
         BackgroundRemovalSteps.log_step(image_id, 1, 5, "이미지 전처리 완료")
         return img_np, scaled_x, scaled_y, scale
@@ -160,3 +157,20 @@ class BackgroundRemovalSteps:
         
         BackgroundRemovalSteps.log_step(image_id, 5, 5, "마스크 적용 완료")
         return result
+
+    @staticmethod
+    def refine_selected_mask(mask, image_id):
+        """4.5단계: 선택된 마스크 정제"""
+        BackgroundRemovalSteps.log_step(image_id, 4.5, 5.5, "마스크 정제 시작")
+        
+        # 마스크를 boolean으로 변환 (threshold 적용)
+        mask_binary = mask > 0.5
+        
+        # 형태학적 연산으로 정제
+        from app.services.image_processing.mask_processor import MaskProcessor
+        refined_mask = MaskProcessor.refine_mask(mask_binary, 
+                                            close_kernel_size=7, 
+                                            open_kernel_size=3)
+        
+        BackgroundRemovalSteps.log_step(image_id, 4.5, 5.5, "마스크 정제 완료")
+        return refined_mask

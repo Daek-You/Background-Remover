@@ -54,24 +54,16 @@ class MaskSelector:
             return (i, score, size_score)
     
     @staticmethod
-    def _check_click_in_mask(masks, x, y):
-        """
-        클릭 위치가 마스크에 포함되는지 확인
-        
-        Args:
-            masks: 마스크 배열
-            x: 클릭한 x 좌표
-            y: 클릭한 y 좌표
-            
-        Returns:
-            list: 유효한 마스크들의 (인덱스, 점수) 리스트
-        """
+    def _check_click_in_mask(masks, x, y, threshold=0.5):
+        """클릭 위치가 마스크에 포함되는지 확인"""
         valid_masks = []
         for i, mask in enumerate(masks):
-            if y < mask.shape[0] and x < mask.shape[1] and mask[y, x]:
-                valid_masks.append(i)
+            if y < mask.shape[0] and x < mask.shape[1]:
+                # float 마스크를 올바르게 처리
+                if mask[y, x] > threshold:
+                    valid_masks.append(i)
         
-        logger.debug(f"클릭 위치를 포함하는 마스크: {len(valid_masks)}개")
+        logger.debug(f"클릭 위치({x}, {y})를 포함하는 마스크: {len(valid_masks)}개")
         return valid_masks
     
     @staticmethod

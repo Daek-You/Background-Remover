@@ -1,49 +1,31 @@
 FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu20.04
 
-# 시스템 패키지 설치 및 정리
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-dev \
-    python3.11-venv \
-    wget \
-    git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# 1. APT 설정 변경 및 패키지 설치
+RUN apt-get clean && apt-get update \
+ && apt-get install -y software-properties-common \
+ && add-apt-repository ppa:deadsnakes/ppa \
+ && apt-get update \
+ && apt-get install -y python3.11 python3.11-dev python3.11-venv wget git \
+ && rm -rf /var/lib/apt/lists/*
 
-# 가상 환경 생성 및 활성화
+# 2. 가상환경 생성 및 pip 업그레이드
 RUN python3.11 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-
-# pip 업그레이드
 RUN pip install --upgrade pip setuptools wheel
 
+# 3. requirements.txt만 먼저 복사해서 캐시 활용
 WORKDIR /app
-
-# requirements.txt 먼저 복사하여 캐시 활용
-COPY requirements.txt .
-
-# 의존성 설치
+COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-# 앱 소스 코드 복사
+# 4. 자주 바뀌는 소스는 가장 마지막에 복사
 COPY . /app
 
-# 모델 저장을 위한 디렉토리 생성
-RUN mkdir -p /app/models
+# 5. 디렉토리 생성 및 권한 설정
+RUN mkdir -p /app/models /app/logs /app/static \
+ && chmod +x /app/start.sh
 
-ENV SAM2_CONFIG_DIR=/app/config/sam2.1
-
-# Python 모듈 경로 설정
+# 6. 환경변수 설정
 ENV PYTHONPATH=/app:$PYTHONPATH
 
-# 환경 설정
-ENV ENV=production
-
-# 시작 스크립트에 실행 권한 부여
-RUN chmod +x /app/start.sh
-
-# 앱 실행
 CMD ["/app/start.sh"]

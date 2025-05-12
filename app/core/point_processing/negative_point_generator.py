@@ -11,17 +11,7 @@ class NegativePointGenerator:
     
     @staticmethod
     def generate_negative_points(image_np, x, y):
-        """
-        SAM 2.1용 negative points 자동 생성
-        
-        Args:
-            image_np: 이미지 numpy 배열
-            x: 클릭한 x 좌표
-            y: 클릭한 y 좌표
-            
-        Returns:
-            numpy.ndarray: negative points 배열 또는 None
-        """
+        """SAM 2.1용 negative points 자동 생성"""
         if not SAM2_OPTIONS['AUTO_NEGATIVE_POINTS']:
             return None
         
@@ -36,8 +26,20 @@ class NegativePointGenerator:
             [w - margin, h - margin],   # 우하단
         ]
         
-        logger.debug(f"자동 생성된 negative points: {len(negative_points)}개")
-        return np.array(negative_points)
+        # 클릭 지점과 너무 가까운 negative points 제거
+        min_distance = min(w, h) * 0.2  # 이미지 크기의 20%
+        filtered_points = []
+        for point in negative_points:
+            distance = np.sqrt((point[0] - x)**2 + (point[1] - y)**2)
+            if distance > min_distance:
+                filtered_points.append(point)
+        
+        if filtered_points:
+            logger.debug(f"자동 생성된 negative points: {len(filtered_points)}개")
+            return np.array(filtered_points)
+        else:
+            logger.debug("적절한 negative points를 생성할 수 없음")
+            return None
     
     @staticmethod
     def combine_points(point_coords, point_labels, negative_points):
