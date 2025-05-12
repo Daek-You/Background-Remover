@@ -20,17 +20,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 # pip 업그레이드
 RUN pip install --upgrade pip setuptools wheel
 
-# 가상 환경에서 기본 패키지 설치
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
-# Python 패키지들을 한 번에 설치
-RUN pip install numpy opencv-python-headless Pillow fastapi uvicorn[standard] \
-               python-multipart tqdm requests
-
-# SAM 2.1 설치
-RUN pip install git+https://github.com/facebookresearch/segment-anything-2.git
-
 WORKDIR /app
+
+# requirements.txt 먼저 복사하여 캐시 활용
+COPY requirements.txt .
+
+# 의존성 설치
+RUN pip install -r requirements.txt
 
 # 앱 소스 코드 복사
 COPY . /app
