@@ -28,9 +28,9 @@ MASK_REFINEMENT = {
     'THRESHOLD': 0.5,           # 마스크 이진화 임계값
     'SOFTEN_EDGES': True,       # 엣지 소프트닝 활성화
     
-    'GAUSSIAN_BLUR_SIGMA': 2.0, # 가우시안 블러 강도
-    'FEATHER_RADIUS': 3,        # 페더링 반경 (픽셀)
-    'POST_PROCESS_DILATION': 3, # 마스크 팽창 정도
+    'GAUSSIAN_BLUR_SIGMA': 1.0, # 가우시안 블러 강도
+    'FEATHER_RADIUS': 1,        # 페더링 반경 (픽셀)
+    'POST_PROCESS_DILATION': 1, # 마스크 팽창 정도
     'EDGE_SMOOTHING': True,     # 엣지 스무딩 활성화
 }
 
