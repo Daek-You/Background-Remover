@@ -10,7 +10,7 @@ from typing import List, Tuple
 from app.services.background_removal.background_remover import BackgroundRemover
 from app.core.model_management.model_manager import get_model_manager
 from app.utils.logger import setup_logger
-from config.settings import API_CONFIG
+from config.settings import API_CONFIG, LARGE_IMAGE_THRESHOLD
 
 logger = setup_logger(__name__)
 router = APIRouter()
@@ -71,9 +71,7 @@ def create_image_response(image: Image.Image) -> StreamingResponse:
 # === 메모리 관리 함수 ===
 async def cleanup_memory_if_needed(image_size: Tuple[int, int]):
     """대용량 이미지 처리 후 메모리 정리"""
-    threshold = API_CONFIG['LARGE_IMAGE_THRESHOLD']
-    
-    if max(image_size) > threshold:
+    if max(image_size) > LARGE_IMAGE_THRESHOLD:
         try:
             model_manager = get_model_manager()
             await model_manager.cleanup_async()

@@ -1,14 +1,13 @@
 import torch
 import multiprocessing
 
-# 이미지 처리 설정
-MAX_IMAGE_SIZE = 1024
+# =============================================================================
+# 이미지 처리 관련 설정
+# =============================================================================
 
-# API 서버 관련 설정
-API_CONFIG = {
-    'MAX_CONCURRENT_REQUESTS': 2,     # 동시 처리 가능한 최대 요청 수
-    'LARGE_IMAGE_THRESHOLD': 1000,    # 대용량 이미지로 간주하는 기준 (픽셀)
-}
+# 이미지 크기 제한
+MAX_IMAGE_SIZE = 1024
+LARGE_IMAGE_THRESHOLD = 1000  # 대용량 이미지 기준 (API, BackgroundRemoval 공통 사용)
 
 # 이미지 분석 파라미터
 IMAGE_ANALYSIS = {
@@ -16,6 +15,17 @@ IMAGE_ANALYSIS = {
     'EDGE_CHECK_RADIUS': 5,
     'CANNY_THRESHOLD_LOW': 50,
     'CANNY_THRESHOLD_HIGH': 150,
+}
+
+# =============================================================================
+# 마스크 처리 관련 설정
+# =============================================================================
+
+# 마스크 정제 공통 설정
+MASK_REFINEMENT = {
+    'CLOSE_KERNEL_SIZE': 7,     # Closing 커널 크기
+    'OPEN_KERNEL_SIZE': 3,      # Opening 커널 크기
+    'THRESHOLD': 0.5,           # 마스크 이진화 임계값
 }
 
 # 마스크 선택 기준
@@ -27,10 +37,20 @@ MASK_SELECTION = {
     'EDGE_WEIGHT': 0.8,
     'SCORE_WEIGHT': 0.2,
     'SIZE_WEIGHT': 0.6,
+    'CLICK_INCLUSION_THRESHOLD': 0.5,
+    'SIZE_SCORE_BASELINE': 50,
+    'SIZE_SCORE_DEVIATION': 45,
+}
 
-    'CLICK_INCLUSION_THRESHOLD': 0.5,  # 클릭 위치가 마스크에 포함되는지 판단하는 임계값
-    'SIZE_SCORE_BASELINE': 50,         # 크기 점수 계산시 기준점 (이상적인 크기의 퍼센티지)
-    'SIZE_SCORE_DEVIATION': 45,        # 크기 점수 계산시 편차 허용 범위
+# =============================================================================
+# SAM 2.1 모델 관련 설정
+# =============================================================================
+
+# 장치 및 양자화 설정
+MODEL_PERFORMANCE = {
+    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
+    'USE_MIXED_PRECISION': True,            # 양자화 사용 여부
+    'QUANTIZATION_DTYPE': torch.bfloat16,   # 양자화 데이터 타입
 }
 
 # SAM 2.1 모델 설정
@@ -39,13 +59,13 @@ MODEL = {
     'VERSION_NAME': 'SAM 2.1',
     'TYPE': 'hiera_b',
     'SUB_DIRECTORY_NAME': 'sam2',
-    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
     
-    # 성능 최적화
-    'USE_MIXED_PRECISION': True,
-    'QUANTIZATION_DTYPE': torch.bfloat16,
+    # 성능 설정 참조
+    'DEVICE': MODEL_PERFORMANCE['DEVICE'],
+    'USE_MIXED_PRECISION': MODEL_PERFORMANCE['USE_MIXED_PRECISION'],
+    'QUANTIZATION_DTYPE': MODEL_PERFORMANCE['QUANTIZATION_DTYPE'],
     
-    # 모델 다운로드 URL
+    # 모델 파일 URL
     'URLS': {
         'hiera_t': 'https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt',
         'hiera_s': 'https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt',
@@ -87,12 +107,40 @@ MODEL = {
     }
 }
 
-# SAM 2.1 추가 옵션
+# SAM 2.1 추가 기능
 SAM2_OPTIONS = {
-    'AUTO_NEGATIVE_POINTS': False,
-    'NEGATIVE_POINT_MARGIN': 10,
-    'MEMORY_BANK_SIZE': 5,  # 비디오 처리용, 이미지는 미사용
+    'AUTO_NEGATIVE_POINTS': False,      # 자동 negative points 생성
+    'NEGATIVE_POINT_MARGIN': 10,        # negative points 여백
+    'MEMORY_BANK_SIZE': 5,              # 비디오 처리용 (이미지에서는 미사용)
 }
+
+# =============================================================================
+# 서비스 및 처리 관련 설정
+# =============================================================================
+
+# API 서버 설정
+API_CONFIG = {
+    'MAX_CONCURRENT_REQUESTS': 2,       # 동시 처리 요청 수
+    'LARGE_IMAGE_THRESHOLD': LARGE_IMAGE_THRESHOLD,  # 공통 임계값 참조
+}
+
+# 배경 제거 서비스 설정
+BACKGROUND_REMOVAL = {
+    'TOTAL_STEPS': 5,                   # 처리 단계 수
+    'LARGE_IMAGE_THRESHOLD': LARGE_IMAGE_THRESHOLD,  # 공통 임계값 참조
+    'DEBUG_INFO_SAVE': False,           # 디버그 정보 저장 여부
+    'MASK_REFINEMENT': MASK_REFINEMENT, # 공통 마스크 정제 설정 참조
+}
+
+# GPU 메모리 관리 설정
+GPU_MEMORY = {
+    'CLEANUP_ON_ERROR': True,           # 에러 시 자동 정리
+    'ENABLE_AUTO_CLEANUP': True,        # 자동 메모리 정리 활성화
+}
+
+# =============================================================================
+# 시스템 리소스 관련 설정
+# =============================================================================
 
 # 병렬 처리 설정
 THREAD_POOL = {
