@@ -20,6 +20,8 @@ logger.info("서버를 시작합니다...")
 logger.info(f"서버 주소: http://{current_env['HOST']}:{current_env['PORT']}")
 logger.info(f"환경: {ENV}")
 logger.info(f"장치: {DEVICE}")
+logger.info(f"로그 레벨: {current_env['LOGGING']['LEVEL']}")
+logger.info(f"디버그 모드: {current_env['DEBUG']}")
 
 # FastAPI 앱 생성
 from app import create_app
@@ -32,6 +34,6 @@ if __name__ == "__main__":
         "main:app", 
         host=current_env['HOST'],
         port=current_env['PORT'],
-        log_level="info",
-        reload=current_env.get('DEBUG', False)
+        log_level=current_env['LOGGING']['LEVEL'],
+        reload=current_env['DEBUG']
     )

@@ -23,8 +23,8 @@ IMAGE_ANALYSIS = {
 
 # 마스크 정제 공통 설정
 MASK_REFINEMENT = {
-    'CLOSE_KERNEL_SIZE': 7,     # Closing 커널 크기
-    'OPEN_KERNEL_SIZE': 3,      # Opening 커널 크기
+    'CLOSE_KERNEL_SIZE': 3,     # Closing 커널 크기
+    'OPEN_KERNEL_SIZE': 1,      # Opening 커널 크기
     'THRESHOLD': 0.5,           # 마스크 이진화 임계값
 }
 
@@ -109,8 +109,8 @@ MODEL = {
 
 # SAM 2.1 추가 기능
 SAM2_OPTIONS = {
-    'AUTO_NEGATIVE_POINTS': False,      # 자동 negative points 생성
-    'NEGATIVE_POINT_MARGIN': 10,        # negative points 여백
+    'AUTO_NEGATIVE_POINTS': True,       # 자동 negative points 생성
+    'NEGATIVE_POINT_MARGIN': 30,        # negative points 여백
     'MEMORY_BANK_SIZE': 5,              # 비디오 처리용 (이미지에서는 미사용)
 }
 

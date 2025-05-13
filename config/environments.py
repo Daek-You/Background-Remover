@@ -9,7 +9,7 @@ ENV = os.getenv('ENV', 'development')
 ENVIRONMENTS = {
     # 로컬 개발용
     'development': {
-        'DEBUG': False,
+        'DEBUG': True,
         'TESTING': False,
         'HOST': '0.0.0.0',
         'PORT': 5000,
