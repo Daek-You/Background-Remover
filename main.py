@@ -1,7 +1,5 @@
 from app.utils.logger import setup_logger
 from config.environments import current_env, ENV
-import os
-import sys
 
 # 로거 설정
 logger = setup_logger(__name__)
@@ -27,7 +25,7 @@ logger.info(f"장치: {DEVICE}")
 from app import create_app
 app = create_app()
 
-# 서버 실행 (python main.py로 직접 실행할 때만 동작)
+# 서버 실행
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

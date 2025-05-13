@@ -1,11 +1,6 @@
 """환경별 설정을 관리하는 모듈"""
 import os
-import logging
 from config.settings import LOGGING
-
-# 기본 로거 설정
-logging.basicConfig(level=logging.INFO, format=LOGGING['FORMAT'], datefmt=LOGGING['DATE_FORMAT'])
-logger = logging.getLogger(__name__)
 
 # 환경 변수에서 현재 환경 가져오기 (기본값: development)
 ENV = os.getenv('ENV', 'development')
@@ -51,7 +46,7 @@ ENVIRONMENTS = {
 def get_environment():
     """현재 환경의 설정을 반환하는 함수"""
     if ENV not in ENVIRONMENTS:
-        logger.warning(f"알 수 없는 환경: '{ENV}'. '개발(development)' 환경으로 설정됩니다.")
+        print(f"알 수 없는 환경: '{ENV}'. '개발(development)' 환경으로 설정됩니다.")
         return ENVIRONMENTS['development']
     return ENVIRONMENTS[ENV]
 
