@@ -188,3 +188,59 @@ class MaskSelector:
         logger.debug(f"최종 선택: 마스크 {selected[0]} (점수: {selected[1]:.3f}, 평가: {selected[2]:.3f})")
         
         return selected[0]
+    
+    @staticmethod
+    def compute_mask_score(
+        mask: np.ndarray,
+        img_np: np.ndarray,
+        x: int,
+        y: int,
+        is_near_edge: bool,
+        edge_strength: float = 0
+    ) -> float:
+        """
+        단일 마스크에 대한 점수 계산 (다중 포인트 처리용)
+        
+        Args:
+            mask: 평가할 마스크
+            img_np: 이미지 numpy 배열
+            x, y: 클릭 좌표
+            is_near_edge: 에지 근처 여부
+            edge_strength: 에지 강도
+            
+        Returns:
+            float: 계산된 점수 (0.0~1.0)
+        """
+        # 마스크 유효성 검사
+        threshold = MASK_SELECTION['CLICK_INCLUSION_THRESHOLD']
+        if y >= mask.shape[0] or x >= mask.shape[1] or mask[y, x] <= threshold:
+            return 0.0  # 클릭 위치가 마스크에 포함되지 않음
+        
+        # 마스크 크기 계산
+        h, w = img_np.shape[:2]
+        total_pixels = h * w
+        mask_pixels = np.sum(mask)
+        mask_percentage = mask_pixels / total_pixels * 100
+        
+        min_size = MASK_SELECTION['MIN_SIZE_PERCENTAGE']
+        max_size = MASK_SELECTION['MAX_SIZE_PERCENTAGE']
+        
+        # 크기 범위 체크
+        if not (min_size <= mask_percentage <= max_size):
+            size_factor = max(0.0, 1.0 - abs(mask_percentage - (min_size + max_size) / 2) / ((max_size - min_size) / 2))
+            size_factor = max(0.1, size_factor)  # 최소 0.1은 유지
+        else:
+            size_factor = 1.0
+        
+        # 평가 점수 계산
+        if is_near_edge:
+            # 에지 근처인 경우 에지 정렬 점수 계산
+            eval_score = ImageAnalyzer.analyze_mask_edge_alignment(mask, img_np) * size_factor
+        else:
+            # 일반 영역인 경우 크기 기반 점수 계산
+            baseline = MASK_SELECTION['SIZE_SCORE_BASELINE']
+            deviation = MASK_SELECTION['SIZE_SCORE_DEVIATION']
+            eval_score = (1.0 - abs(baseline - mask_percentage) / deviation) * size_factor
+        
+        # 점수 범위 제한
+        return max(0.0, min(1.0, eval_score))

@@ -121,6 +121,54 @@ class BackgroundRemovalSteps:
         return selected_mask
     
     @staticmethod
+    def select_best_mask_multi_point(
+        masks: np.ndarray,
+        scores: np.ndarray,
+        img_np: np.ndarray,
+        points: List[Tuple[int, int]],
+        is_near_edge_list: List[bool],
+        edge_strength_list: List[float],
+        context_info: Dict[str, Any],
+        image_id: str
+    ) -> np.ndarray:
+        """4단계: 다중 포인트를 활용한 마스크 선택"""
+        BackgroundRemovalSteps._log_step(image_id, 4, "다중 포인트 마스크 선택")
+        
+        # 점수 계산을 위한 MaskSelector 클래스의 인스턴스 메서드 활용
+        from app.services.mask_selection.mask_selector import MaskSelector
+        
+        # 각 마스크에 대한 점수 계산
+        mask_scores = []
+        for i, mask in enumerate(masks):
+            # 기본 모델 점수
+            base_score = scores[i]
+            
+            # 각 포인트별로 마스크 점수 계산 후 평균
+            point_mask_scores = []
+            for j, (x, y) in enumerate(points):
+                # 각 포인트에 대한 마스크 점수 계산
+                point_score = MaskSelector.compute_mask_score(
+                    mask, img_np, x, y, 
+                    is_near_edge_list[j] if j < len(is_near_edge_list) else False,
+                    edge_strength_list[j] if j < len(edge_strength_list) else 0.5
+                )
+                point_mask_scores.append(point_score)
+            
+            # 모든 포인트의 평균 점수와 기본 모델 점수 결합
+            avg_point_score = sum(point_mask_scores) / len(point_mask_scores)
+            combined_score = base_score * 0.4 + avg_point_score * 0.6  # 가중치 조정 가능
+            mask_scores.append(combined_score)
+            
+            logger.debug(f"[{image_id}] 마스크 {i} - 기본점수: {base_score:.3f}, 포인트점수: {avg_point_score:.3f}, 결합점수: {combined_score:.3f}")
+        
+        # 최고 점수의 마스크 선택
+        best_mask_idx = np.argmax(mask_scores)
+        selected_mask = masks[best_mask_idx]
+        
+        logger.info(f"[{image_id}] 선택된 마스크: {best_mask_idx}번 (결합점수: {mask_scores[best_mask_idx]:.3f})")
+        return selected_mask
+    
+    @staticmethod
     def refine_and_apply_mask(
         image, 
         mask: np.ndarray, 

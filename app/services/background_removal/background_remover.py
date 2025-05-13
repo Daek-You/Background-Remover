@@ -85,11 +85,22 @@ class BackgroundRemover:
             image, click_points, image_id
         )
         
-        # 2. 이미지 분석 (첫 번째 포인트 기준)
-        x0, y0 = scaled_points[0]
-        is_near_edge, edge_strength, context_info = BackgroundRemovalSteps.analyze_image(
-            img_np, x0, y0, image_id
-        )
+        # 2. 이미지 분석 (모든 포인트에 대해 수행하고 결과 통합)
+        context_info = {}
+        is_near_edge_list = []
+        edge_strength_list = []
+        
+        # 각 포인트에 대해 이미지 분석 수행
+        for i, (x, y) in enumerate(scaled_points):
+            is_near_edge, edge_strength, point_context = BackgroundRemovalSteps.analyze_image(
+                img_np, x, y, f"{image_id}_point{i}"
+            )
+            is_near_edge_list.append(is_near_edge)
+            edge_strength_list.append(edge_strength)
+            
+            # 컨텍스트 정보 통합 (각 포인트별 정보 유지)
+            if point_context:
+                context_info[f"point_{i}"] = point_context
         
         # 3. 모델 예측 (다중 포인트)
         masks, scores, logits = BackgroundRemovalSteps.predict_masks(
@@ -99,10 +110,10 @@ class BackgroundRemover:
         # 예측 결과 로깅
         BackgroundRemover._log_prediction_results(image_id, masks, scores)
         
-        # 4. 마스크 선택
-        selected_mask = BackgroundRemovalSteps.select_best_mask(
-            masks, scores, img_np, x0, y0, 
-            is_near_edge, edge_strength, context_info, image_id
+        # 4. 마스크 선택 (모든 포인트 정보 활용)
+        selected_mask = BackgroundRemovalSteps.select_best_mask_multi_point(
+            masks, scores, img_np, scaled_points, 
+            is_near_edge_list, edge_strength_list, context_info, image_id
         )
         
         # 5. 마스크 정제 및 적용
