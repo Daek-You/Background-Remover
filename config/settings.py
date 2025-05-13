@@ -30,20 +30,20 @@ MASK_REFINEMENT = {
     
     'GAUSSIAN_BLUR_SIGMA': 2.0, # 가우시안 블러 강도
     'FEATHER_RADIUS': 3,        # 페더링 반경 (픽셀)
-    'POST_PROCESS_DILATION': 2, # 마스크 팽창 정도
+    'POST_PROCESS_DILATION': 3, # 마스크 팽창 정도
     'EDGE_SMOOTHING': True,     # 엣지 스무딩 활성화
 }
 
 # 마스크 선택 기준
 MASK_SELECTION = {
-    'MIN_SIZE_PERCENTAGE': 3,
-    'MAX_SIZE_PERCENTAGE': 95,
-    'SCORE_THRESHOLD': 0.5,
+    'MIN_SIZE_PERCENTAGE': 2,
+    'MAX_SIZE_PERCENTAGE': 85,
+    'SCORE_THRESHOLD': 0.4,
     'TOP_MASKS_COUNT': 5,
     'EDGE_WEIGHT': 0.8,
     'SCORE_WEIGHT': 0.2,
     'SIZE_WEIGHT': 0.6,
-    'CLICK_INCLUSION_THRESHOLD': 0.5,
+    'CLICK_INCLUSION_THRESHOLD': 0.1,
     'SIZE_SCORE_BASELINE': 50,
     'SIZE_SCORE_DEVIATION': 45,
 }
@@ -115,9 +115,9 @@ MODEL = {
 
 # SAM 2.1 추가 기능
 SAM2_OPTIONS = {
-    'AUTO_NEGATIVE_POINTS': True,       # 자동 negative points 생성
-    'NEGATIVE_POINT_MARGIN': 30,        # negative points 여백
-    'MEMORY_BANK_SIZE': 5,              # 비디오 처리용 (이미지에서는 미사용)
+    'AUTO_NEGATIVE_POINTS': False,       # 자동 negative points 생성
+    'NEGATIVE_POINT_MARGIN': 50,         # negative points 여백
+    'MEMORY_BANK_SIZE': 5,               # 비디오 처리용 (이미지에서는 미사용)
 }
 
 # =============================================================================

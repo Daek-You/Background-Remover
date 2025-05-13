@@ -54,7 +54,7 @@ class MaskProcessor:
     @staticmethod
     def _soften_mask_edges(mask: np.ndarray) -> np.ndarray:
         """
-        마스크 경계를 부드럽게 처리
+        마스크 경계를 부드럽게 처리 (강화된 버전)
         
         Args:
             mask: 원본 마스크
@@ -69,20 +69,57 @@ class MaskProcessor:
         # 1. 마스크를 실수형으로 변환
         soft_mask = mask.astype(np.float32)
         
-        # 2. 미세한 팽창으로 경계 확장
+        # 2. 더 강한 팽창 (하얀 경계 제거용)
         if dilation_size > 0:
-            kernel = np.ones((dilation_size*2+1, dilation_size*2+1), np.uint8)
-            dilated = cv2.dilate((soft_mask * 255).astype(np.uint8), kernel, iterations=1)
+            # 더 큰 커널과 더 많은 반복
+            kernel = np.ones((5, 5), np.uint8)
+            dilated = (soft_mask * 255).astype(np.uint8)
+            
+            # 팽창을 더 많이 적용
+            for _ in range(dilation_size + 1):
+                dilated = cv2.dilate(dilated, kernel, iterations=1)
+            
             soft_mask = dilated.astype(np.float32) / 255.0
         
-        # 3. 가우시안 블러로 경계 소프트닝
-        soft_mask = gaussian_filter(soft_mask, sigma=gaussian_sigma)
+        # 3. 추가 전처리 - 에지 검출 기반 마스크 확장
+        # 경계 근처의 유사한 색상도 포함시키기
+        soft_mask = MaskProcessor._edge_aware_expansion(soft_mask)
         
-        # 4. 값 범위 정규화 (0-1)
+        # 4. 이중 가우시안 블러로 더 부드러운 경계 생성
+        # 첫 번째: 강한 블러로 경계 확산
+        soft_mask = gaussian_filter(soft_mask, sigma=gaussian_sigma * 1.5)
+        
+        # 두 번째: 약한 블러로 자연스러운 그라데이션 생성
+        soft_mask = gaussian_filter(soft_mask, sigma=gaussian_sigma * 0.7)
+        
+        # 5. 삼중 블러로 더욱 부드러운 전환
+        soft_mask = gaussian_filter(soft_mask, sigma=gaussian_sigma * 0.3)
+        
+        # 6. 경계 부근 알파 값 조정 (더 자연스러운 전환)
+        # 더 강한 감마 보정 적용
+        soft_mask = np.power(soft_mask, 0.6)  # 0.8 → 0.6 (더 강한 효과)
+        
+        # 7. 값 범위 정규화 (0-1)
         soft_mask = np.clip(soft_mask, 0, 1)
         
-        logger.debug(f"마스크 소프트닝 완료 (sigma={gaussian_sigma}, dilation={dilation_size})")
+        logger.debug(f"강화된 마스크 소프트닝 완료 (sigma={gaussian_sigma}, dilation={dilation_size})")
         return soft_mask
+    
+    @staticmethod
+    def _edge_aware_expansion(mask: np.ndarray) -> np.ndarray:
+        """에지 인식 기반 마스크 확장"""
+        # 현재 마스크 경계 찾기
+        mask_uint8 = (mask * 255).astype(np.uint8)
+        edges = cv2.Canny(mask_uint8, 50, 150)
+        
+        # 경계 근처 확장
+        kernel_small = np.ones((3, 3), np.uint8)
+        expanded_edges = cv2.dilate(edges, kernel_small, iterations=2)
+        
+        # 원본 마스크와 결합
+        expanded_mask = np.maximum(mask, expanded_edges.astype(np.float32) / 255.0)
+        
+        return expanded_mask
     
     @staticmethod
     def refine_mask(mask: np.ndarray, close_kernel_size: int = 5, open_kernel_size: int = 3) -> np.ndarray:
