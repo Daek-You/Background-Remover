@@ -8,4 +8,5 @@ uvicorn[standard]
 python-multipart
 tqdm
 requests
+scipy
 git+https://github.com/facebookresearch/segment-anything-2.git 

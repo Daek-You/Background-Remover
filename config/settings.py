@@ -26,6 +26,12 @@ MASK_REFINEMENT = {
     'CLOSE_KERNEL_SIZE': 3,     # Closing 커널 크기
     'OPEN_KERNEL_SIZE': 1,      # Opening 커널 크기
     'THRESHOLD': 0.5,           # 마스크 이진화 임계값
+    'SOFTEN_EDGES': True,       # 엣지 소프트닝 활성화
+    
+    'GAUSSIAN_BLUR_SIGMA': 2.0, # 가우시안 블러 강도
+    'FEATHER_RADIUS': 3,        # 페더링 반경 (픽셀)
+    'POST_PROCESS_DILATION': 2, # 마스크 팽창 정도
+    'EDGE_SMOOTHING': True,     # 엣지 스무딩 활성화
 }
 
 # 마스크 선택 기준

@@ -1,7 +1,10 @@
 """ 마스크 처리 전담 클래스 """
 import numpy as np
-from PIL import Image
+import cv2
+from PIL import Image, ImageFilter
 from app.utils.logger import setup_logger
+from config.settings import MASK_REFINEMENT
+from scipy.ndimage import gaussian_filter, binary_dilation
 
 # 로거 설정
 logger = setup_logger(__name__)
@@ -22,20 +25,64 @@ class MaskProcessor:
         Returns:
             Image.Image: 마스크가 적용된 이미지
         """
-        # 마스크를 PIL 이미지로 변환
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        # 1. 마스크 소프트닝 적용 (설정에 따라)
+        if MASK_REFINEMENT.get('SOFTEN_EDGES', True):
+            processed_mask = MaskProcessor._soften_mask_edges(mask)
+        else:
+            processed_mask = mask
         
-        # 원본 크기로 복원 필요시
+        # 2. 마스크를 PIL 이미지로 변환
+        mask_img = Image.fromarray((processed_mask * 255).astype(np.uint8), mode="L")
+        
+        # 3. 원본 크기로 복원 필요시
         if resize_scale != 1.0:
             mask_img = mask_img.resize(image.size, Image.Resampling.LANCZOS)
             logger.debug(f"마스크 크기 조정: 스케일={resize_scale}")
         
-        # 마스크를 원본 이미지에 적용
+        # 4. 엣지 스무딩 적용 (설정에 따라)
+        if MASK_REFINEMENT.get('EDGE_SMOOTHING', True):
+            feather_radius = MASK_REFINEMENT.get('FEATHER_RADIUS', 2)
+            mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=feather_radius))
+        
+        # 5. 마스크를 원본 이미지에 적용
         result = image.convert('RGBA')
         result.putalpha(mask_img)
         
-        logger.debug("마스크 적용 완료")
+        logger.debug("소프트닝된 마스크 적용 완료")
         return result
+    
+    @staticmethod
+    def _soften_mask_edges(mask: np.ndarray) -> np.ndarray:
+        """
+        마스크 경계를 부드럽게 처리
+        
+        Args:
+            mask: 원본 마스크
+            
+        Returns:
+            np.ndarray: 소프트닝된 마스크
+        """
+        # 설정값 가져오기
+        gaussian_sigma = MASK_REFINEMENT.get('GAUSSIAN_BLUR_SIGMA', 1.5)
+        dilation_size = MASK_REFINEMENT.get('POST_PROCESS_DILATION', 1)
+        
+        # 1. 마스크를 실수형으로 변환
+        soft_mask = mask.astype(np.float32)
+        
+        # 2. 미세한 팽창으로 경계 확장
+        if dilation_size > 0:
+            kernel = np.ones((dilation_size*2+1, dilation_size*2+1), np.uint8)
+            dilated = cv2.dilate((soft_mask * 255).astype(np.uint8), kernel, iterations=1)
+            soft_mask = dilated.astype(np.float32) / 255.0
+        
+        # 3. 가우시안 블러로 경계 소프트닝
+        soft_mask = gaussian_filter(soft_mask, sigma=gaussian_sigma)
+        
+        # 4. 값 범위 정규화 (0-1)
+        soft_mask = np.clip(soft_mask, 0, 1)
+        
+        logger.debug(f"마스크 소프트닝 완료 (sigma={gaussian_sigma}, dilation={dilation_size})")
+        return soft_mask
     
     @staticmethod
     def refine_mask(mask: np.ndarray, close_kernel_size: int = 5, open_kernel_size: int = 3) -> np.ndarray:
@@ -50,8 +97,6 @@ class MaskProcessor:
         Returns:
             numpy.ndarray: 정제된 마스크
         """
-        import cv2
-        
         # boolean 마스크를 uint8로 변환
         mask_uint8 = (mask * 255).astype(np.uint8)
         
