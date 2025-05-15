@@ -33,6 +33,8 @@ ENVIRONMENTS = {
             "https://s12p31d202.com",
             "http://0v0.co.kr",
             "https://0v0.co.kr",
+            'http://localhost:3000',
+            'http://127.0.0.1:3000'
         ],
         'LOGGING': {
             'LEVEL': 'INFO',
